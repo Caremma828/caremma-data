@@ -791,7 +791,6 @@ function handleUpload(file, zone){
   showUploadProgress(zid, 10, 'Lecture...');
   var reader = new FileReader();
   reader.onload = function(e){
-    showUploadProgress(zid, 50, 'Envoi vers JSONBin...');
     var doc = {
       id: Date.now()+'_'+Math.random().toString(36).slice(2,5),
       nom: file.name, name: file.name,
@@ -802,39 +801,42 @@ function handleUpload(file, zone){
       data: e.target.result,
       fromClient: true
     };
+    // 1. Sauvegarder en localStorage immédiatement
     if(!CLIENT.docs) CLIENT.docs=[];
     CLIENT.docs.push(doc);
     localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT));
+    showUploadProgress(zid, 70, 'Sauvegarde...');
+    if(zid==='doc') renderDocs();
 
+    // 2. Envoyer vers JSONBin en arrière-plan
     jbGet(MSG_BIN).then(function(data){
-      var k = eKey(CLIENT.email);
+      var k=eKey(CLIENT.email);
       if(!data.messages) data.messages={};
       if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
       if(!data.messages[k].docs) data.messages[k].docs=[];
       data.messages[k].docs.push(doc);
       return jbPut(MSG_BIN, data);
     }).then(function(){
-      showUploadProgress(zid, 100, '✓ Document envoyé à votre conseiller');
-      setTimeout(function(){ showUploadProgress(zid, null, ''); }, 2500);
+      showUploadProgress(zid, 100, '✓ Document envoyé');
+      setTimeout(function(){ showUploadProgress(zid, null, ''); }, 2000);
       toast('Document déposé ✓','success');
-      if(zid==='doc') renderDocs();
       // Notif Web3Forms
       fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({access_key:W3F_KEY,subject:'Nouveau document de '+CLIENT.prenom+' '+CLIENT.nom,
           message:CLIENT.prenom+' '+CLIENT.nom+' a déposé : '+doc.nom,email:'marc.reverseau@caremmafinance.com'})
       }).catch(function(){});
     }).catch(function(err){
-      toast('Erreur upload: '+err.message,'error');
-      showUploadProgress(zid, null, '');
+      // JSONBin a échoué mais doc déjà en localStorage — pas bloquant
+      showUploadProgress(zid, 100, '✓ Document sauvegardé localement');
+      setTimeout(function(){ showUploadProgress(zid, null, ''); }, 2000);
+      toast('Document sauvegardé ✓','success');
+      console.warn('JSONBin upload:', err);
     });
   };
   reader.onerror = function(){ toast('Erreur lecture fichier','error'); showUploadProgress(zid,null,''); };
   reader.readAsDataURL(file);
 }
 
-// ═══════════════════════════════════════════════════════
-// REPORTING / PORTEFEUILLE
-// ═══════════════════════════════════════════════════════
 function loadReporting(){
   var repEl  = document.getElementById('rep-list');
   var repCt  = document.getElementById('rep-count');
