@@ -1858,7 +1858,7 @@ function rdTabPtfEvol(c) {
     cc.patrimoine.dateMAJ = label;
     if(perf) cc.patrimoine.perfYTD = parseFloat(perf)||0;
     if(profilEl&&profilEl.value){ cc.profil=profilEl.value; }
-    lsSave();
+    saveClientsLocal();
     syncPtfToPortail(cc);
     rdTabPtfEvol(cc);
     toast('Entrée enregistrée et envoyée au portail ✓','success');
@@ -1871,7 +1871,7 @@ function rdTabPtfEvol(c) {
       var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
       cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
     }
-    lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc); toast('Supprimé','');
+    saveClientsLocal(); syncPtfToPortail(cc); rdTabPtfEvol(cc); toast('Supprimé','');
   };
 
   // ── Importer depuis relevé (PDF/Excel texte — extraction valeurs) ──
@@ -1908,7 +1908,7 @@ function rdTabPtfEvol(c) {
       cc.patrimoine.historique.sort(function(a,b){return a.dateRaw<b.dateRaw?-1:1;});
       var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
       cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
-      lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
+      saveClientsLocal(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
       toast(imported+' valeur(s) importée(s) ✓','success');
     };
     reader.readAsText(file);
@@ -2015,7 +2015,7 @@ function rdTabPtfEvol(c) {
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <button class="btn bd bsm" style="margin-top:10px" onclick="if(confirm('Effacer tout l\'historique ?')){var cc=gc('${c.id}');cc.patrimoine.historique=[];lsSave();syncPtfToPortail(cc);rdTabPtfEvol(cc);}">🗑 Effacer l'historique</button>
+    <button class="btn bd bsm" style="margin-top:10px" onclick="if(confirm('Effacer tout l\'historique ?')){var cc=gc('${c.id}');cc.patrimoine.historique=[];saveClientsLocal();syncPtfToPortail(cc);rdTabPtfEvol(cc);}">🗑 Effacer l'historique</button>
   </div>`:''} 
   `;
 
@@ -2106,7 +2106,7 @@ window._ptfPasteImport = function(cid) {
   cc.patrimoine.historique.sort(function(a,b){return a.dateRaw<b.dateRaw?-1:1;});
   var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
   cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
-  lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
+  saveClientsLocal(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
   toast(imported+' valeur(s) importée(s) ✓','success');
 };
 
@@ -2128,7 +2128,7 @@ function syncPtfToPortail(c) {
     if(profilEl && profilEl.value) {
       data.messages[k].profil = profilEl.value;
       c.profil = profilEl.value;
-      lsSave();
+      saveClientsLocal();
     }
     return jbPutCRM(MSG_BIN, data);
   }).then(function(){
@@ -2936,7 +2936,7 @@ function rdTabParcours(c) {
     inp.addEventListener('change', function() {
       if (!c.parcoursData) c.parcoursData = {};
       if (this.id) c.parcoursData[this.id] = (this.type==='checkbox'||this.type==='radio') ? this.checked : this.value;
-      lsSave();
+      saveClientsLocal();
     });
   });
 
@@ -3125,7 +3125,7 @@ function cifDocSave(tab) {
   });
   if (!c.docData) c.docData = {};
   c.docData[tab] = data;
-  lsSave();
+  saveClientsLocal();
 }
 
 function cifDocDownload(tab) {
@@ -4222,7 +4222,7 @@ function lcbSaveFiche() {
   lcbRenderRegistre();
   // Mettre à jour fiche client si ouvert
   if(CID && clientId==CID) {
-    var cc = gc(CID); if(cc) { cc.lcbfiche=fiche; lsSave(); }
+    var cc = gc(CID); if(cc) { cc.lcbfiche=fiche; saveClientsLocal(); }
   }
   toast('Fiche LCB-FT enregistrée ✓','success');
 }
@@ -4634,7 +4634,7 @@ function rdParcoursClientTab(tab) {
         inp.addEventListener('change',function(){
           if(!c.parcoursData) c.parcoursData={};
           if(this.id) c.parcoursData[this.id]=(this.type==='checkbox'||this.type==='radio')?this.checked:this.value;
-          lsSave();
+          saveClientsLocal();
         });
       });
     }
@@ -5032,7 +5032,7 @@ function sendDocuSignCRM(clientId) {
         sections: sections
       });
       c.parcoursStatus = 'sent_for_signature';
-      lsSave();
+      saveClientsLocal();
       // Sync JSONBin
       jbGetCRM(MSG_BIN).then(function(data){
         var k=eKey(c.email);
@@ -5140,7 +5140,7 @@ function sendDocuSignCRM(clientId) {
         sections: sections
       });
       c.parcoursStatus = 'sent_for_signature';
-      lsSave();
+      saveClientsLocal();
       // Sync JSONBin
       jbGetCRM(MSG_BIN).then(function(data){
         var k=eKey(c.email);
