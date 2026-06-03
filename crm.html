@@ -1186,7 +1186,7 @@ let CID=null; // client actif
 let ACVID=null; // conversation active
 let IMPFILES=[]; // fichiers import
 let EXD=null; // extracted data
-let EJS=Object.assign({publicKey:'n3A90AckiktUlWH0l',serviceId:'service_qz3nkkq',templatePortal:'template_wmauhka',templateReminder:'template_wmauhka',fromEmail:'marc.reverseau@caremmafinance.com',fromName:'Marc Reverseau — Caremma Finance'},JSON.parse(localStorage.getItem('crmEJS')||'{}'));
+let EJS=Object.assign({publicKey:'n3A90AckiktUlWH0l',serviceId:'service_qz3nkkq',templatePortal:'template_v56dw5r',templateReminder:'template_v56dw5r',fromEmail:'marc.reverseau@caremmafinance.com',fromName:'Marc Reverseau — Caremma Finance'},JSON.parse(localStorage.getItem('crmEJS')||'{}'));
 
 // ═══════════════════════════════════════════════════════
 // UTILS
@@ -2785,13 +2785,13 @@ async function createC(){
         await jbPutCRM(CLIENTS_BIN,{clients:cl});
       }catch(e){console.warn('JSONBin:',e);}
       try{
-        emailjs.init({publicKey:'n3A90AckiktUlWH0l'});
-        await emailjs.send('service_qz3nkkq','template_wmauhka',{
+        emailjs.init({publicKey:'cstVoAsfF9vn4uc6C'});
+        await emailjs.send('service_hp5456h','template_v56dw5r',{
           to_email:newC.email,to_name:newC.prenom+' '+newC.nom,
           from_name:'Marc Reverseau — Caremma Finance',
           reply_to:'marc.reverseau@caremmafinance.com',
           client_prenom:newC.prenom,access_code:code,
-          message:'Accédez à votre espace : https://caremma828.github.io/caremma-data/portail.html',
+          message:'Accédez à votre espace : https://caremma828.github.io/caremma-data/portail.html?v=1780514853?v=1780514853',
           subject:'Bienvenue — Votre espace client Caremma Finance'
         });
         toast('✓ Email envoyé à '+newC.email,'success');
@@ -2871,7 +2871,7 @@ function expPDF(){toast('Export PDF — nécessite un backend Node.js pour signe
 // Charger les données sauvegardées
 loadClientsLocal();
 document.getElementById('ejsW').style.display=ejsOK()?'none':'inline-block';
-if(typeof emailjs!=='undefined') emailjs.init({publicKey:'n3A90AckiktUlWH0l'});
+if(typeof emailjs!=='undefined') emailjs.init({publicKey:'cstVoAsfF9vn4uc6C'});
 rdDash();
 
 
@@ -2985,13 +2985,13 @@ async function invitePortal(){
     await jbPutCRM(CLIENTS_BIN,{clients:cl});
   }catch(e){console.warn('JSONBin invitePortal:',e);}
   try{
-    emailjs.init({publicKey:'n3A90AckiktUlWH0l'});
-    await emailjs.send('service_qz3nkkq','template_wmauhka',{
+    emailjs.init({publicKey:'cstVoAsfF9vn4uc6C'});
+    await emailjs.send('service_hp5456h','template_v56dw5r',{
       to_email:c.email,to_name:c.prenom+' '+c.nom,
       from_name:'Marc Reverseau — Caremma Finance',
       reply_to:'marc.reverseau@caremmafinance.com',
       client_prenom:c.prenom,access_code:code,
-      message:'Accédez à votre espace : https://caremma828.github.io/caremma-data/portail.html',
+      message:'Accédez à votre espace : https://caremma828.github.io/caremma-data/portail.html?v=1780514853?v=1780514853',
       subject:'Bienvenue sur votre espace client Caremma Finance'
     });
     toast('✓ Invitation envoyée à '+c.email,'success');
@@ -3011,8 +3011,8 @@ async function resetPortalAccess(clientId){
     console.log('✓ Code '+code+' écrit pour '+c.email);
   }catch(e){console.warn('JSONBin reset:',e); toast('Erreur JSONBin : '+(e.message||''),'error'); return;}
   try{
-    emailjs.init({publicKey:'n3A90AckiktUlWH0l'});
-    await emailjs.send('service_qz3nkkq','template_wmauhka',{
+    emailjs.init({publicKey:'cstVoAsfF9vn4uc6C'});
+    await emailjs.send('service_hp5456h','template_v56dw5r',{
       to_email:c.email,to_name:c.prenom+' '+c.nom,
       from_name:'Marc Reverseau — Caremma Finance',
       reply_to:'marc.reverseau@caremmafinance.com',
