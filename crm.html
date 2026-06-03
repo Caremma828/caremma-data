@@ -343,6 +343,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
     <div class="nav-i" id="ni-pc-connaissance" onclick="go('pc-connaissance',this)"><span class="nav-ico">📊</span><span class="nav-lbl2">Connaissance & compétence</span></div>
     <div class="nav-i" id="ni-pc-adequation" onclick="go('pc-adequation',this)"><span class="nav-ico">✅</span><span class="nav-lbl2">Déclaration d'adéquation</span></div>
     <div class="nav-i" id="ni-kyc" onclick="go('kyc',this)"><span class="nav-ico">📊</span><span class="nav-lbl2">Tableau KYC</span><span class="nbadge g" id="nb-kyc">0</span></div>
+    <div class="nav-i" id="ni-docs-vierges" onclick="go('docs-vierges',this)"><span class="nav-ico">📄</span><span class="nav-lbl2">Documents vierges</span></div>
     <div class="nav-i" id="ni-lcbft" onclick="go('lcbft',this)"><span class="nav-ico">⚖️</span><span class="nav-lbl2">LCB-FT</span></div>
     <div class="nav-i" id="ni-messagerie" onclick="go('messagerie',this)"><span class="nav-ico">💬</span><span class="nav-lbl2">Messagerie</span><span class="nbadge" id="nb-msg" style="display:none">!</span></div>
     <div class="ndiv"></div>
@@ -438,155 +439,52 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
 </div>
 
 <!-- ━━━ KYC BOARD ━━━ -->
-<div class="pg" id="pg-kyc">
+
+<!-- ━━━ DOCUMENTS VIERGES ━━━ -->
+<div class="pg" id="pg-docs-vierges">
   <div class="ph">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div class="pt">Tableau KYC — Connaissance Client</div>
-        <div class="ps">Statut de connaissance client · Procédure interne CIF/CGP</div>
-      </div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="btn bp2 bsm" onclick="kycGenProcedurePDF()">📄 Procédure KYC interne PDF</button>
-        <button class="btn bgh bsm" onclick="kycGenFichePDF()">📋 Fiche KYC vierge PDF</button>
+    <div class="pt">Documents vierges</div>
+    <div class="ps">Générez et imprimez les documents du parcours client au format banque privée</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:8px">
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="sh"><span class="st">📝 Entrée en relation</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5">Document CIF complet — Informations intermédiaire, assureurs, rémunération, réclamation & médiation. 5 pages.</p>
+      <button class="btn bp2 bsm" onclick="genDocVierge('entree')">⬇ Télécharger PDF</button>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="sh"><span class="st">🎯 Questionnaire objectifs</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5">Recueil des objectifs de placement — Identité, situation familiale, financière, patrimoine, objectifs, ESG.</p>
+      <button class="btn bp2 bsm" onclick="genDocVierge('objectifs')">⬇ Télécharger PDF</button>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="sh"><span class="st">📊 Connaissance & compétence</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5">Évaluation AMF — Produits financiers, gestion passée, suivi placements, affirmations, profil de risque comportemental.</p>
+      <button class="btn bp2 bsm" onclick="genDocVierge('connaissance')">⬇ Télécharger PDF</button>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="sh"><span class="st">✅ Déclaration d'adéquation</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5">Synthèse du profil client et recommandation d'investissement adaptée. Signature client.</p>
+      <button class="btn bp2 bsm" onclick="genDocVierge('adequation')">⬇ Télécharger PDF</button>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div class="sh"><span class="st">📋 Dossier complet client</span></div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5">Génère en une fois l'intégralité du parcours client : entrée en relation + questionnaires + adéquation.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp2 bsm" onclick="genDocVierge('all')">⬇ Dossier complet</button>
       </div>
     </div>
-  </div>
 
-  <div style="display:flex;gap:0;border-bottom:2px solid var(--bdr);margin-bottom:16px">
-    <button class="tb on" id="ktab-tableau" onclick="kycTab('tableau',this)">📊 Tableau KYC</button>
-    <button class="tb" id="ktab-procedure" onclick="kycTab('procedure',this)">📜 Procédure interne</button>
-    <button class="tb" id="ktab-fiche" onclick="kycTab('fiche',this)">📋 Fiche vierge</button>
   </div>
-
-  <!-- TAB TABLEAU -->
-  <div id="ktp-tableau" class="tp on">
-    <div class="g3" id="kyc-kpis" style="margin-bottom:14px"></div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <table class="tbl hov" id="kyc-tbl"></table>
-    </div>
-  </div>
-
-  <!-- TAB PROCÉDURE -->
-  <div id="ktp-procedure" class="tp">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="card">
-          <div class="sh"><span class="st">📜 Procédure KYC — CGP/CIF</span><button class="btn bp2 bsm" onclick="kycGenProcedurePDF()">📄 PDF</button></div>
-          <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px;line-height:1.7">
-            Procédure interne d'entrée en relation et de connaissance client, conforme aux obligations AMF/ACPR pour les Conseillers en Investissements Financiers.
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">1. ENTRÉE EN RELATION</div>
-              <div style="font-size:11.5px;line-height:1.7">Avant toute recommandation : vérification d'identité (CNI/passeport), justificatif de domicile &lt;3 mois, questionnaire situation patrimoniale et familiale complet. Signature du document d'entrée en relation (IDD).</div>
-            </div>
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">2. QUESTIONNAIRE OBJECTIFS</div>
-              <div style="font-size:11.5px;line-height:1.7">Collecte des objectifs patrimoniaux, horizon d'investissement, situation fiscale, revenus et charges, actifs et passifs. Mise à jour annuelle ou lors d'événements significatifs.</div>
-            </div>
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">3. CONNAISSANCE CLIENT AMF</div>
-              <div style="font-size:11.5px;line-height:1.7">Évaluation des connaissances et expériences financières, test d'adéquation, détermination du profil de risque (1 à 7). Questionnaire conforme directive MIF2, art. L.533-13 CMF.</div>
-            </div>
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">4. DÉCLARATION D'ADÉQUATION</div>
-              <div style="font-size:11.5px;line-height:1.7">Rédaction de la déclaration d'adéquation motivée, conforme à l'art. 54 du Règlement délégué UE 2017/565. Remise obligatoire avant toute recommandation personnalisée.</div>
-            </div>
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--blue)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">5. MISE À JOUR ANNUELLE</div>
-              <div style="font-size:11.5px;line-height:1.7">Revue annuelle du dossier client : mise à jour des informations, réévaluation du profil de risque, adaptation des recommandations. Documentation systématique.</div>
-            </div>
-            <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--green)">
-              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">6. CONSERVATION & TRAÇABILITÉ</div>
-              <div style="font-size:11.5px;line-height:1.7">Conservation 5 ans (art. L.561-12 CMF). Traçabilité de chaque échange, recommandation et signature. Rapport annuel de gestion disponible pour chaque client.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="card">
-          <div class="sh"><span class="st">⚖️ Base réglementaire</span></div>
-          <table class="tbl" style="font-size:11.5px">
-            <thead><tr><th>Obligation</th><th>Référence</th></tr></thead>
-            <tbody>
-              <tr><td>Information client (IDD)</td><td style="font-family:monospace;font-size:10.5px">Dir. DDA — L.521-1 CMF</td></tr>
-              <tr><td>Questionnaire client (MIF2)</td><td style="font-family:monospace;font-size:10.5px">Art. L.533-13 CMF</td></tr>
-              <tr><td>Déclaration d'adéquation</td><td style="font-family:monospace;font-size:10.5px">Art. 54 Règl. UE 2017/565</td></tr>
-              <tr><td>Évaluation du caractère approprié</td><td style="font-family:monospace;font-size:10.5px">Art. L.533-14 CMF</td></tr>
-              <tr><td>Enregistrement des échanges</td><td style="font-family:monospace;font-size:10.5px">Art. L.533-10 CMF</td></tr>
-              <tr><td>Conservation des documents</td><td style="font-family:monospace;font-size:10.5px">Art. L.561-12 CMF</td></tr>
-              <tr><td>Rapport annuel de gestion</td><td style="font-family:monospace;font-size:10.5px">Art. 60 Règl. UE 2017/565</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy2));border:none">
-          <div style="font-size:11px;font-weight:700;color:var(--gold2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase">Caremma Finance</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.7">
-            Conseiller en Investissements Financiers<br>
-            ORIAS n°24007767<br>
-            marc.reverseau@caremmafinance.com
-          </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(201,168,76,.2);font-size:11px;color:rgba(255,255,255,.45)">
-            Procédure mise à jour annuellement.<br>Dernière révision : <span id="kyc-proc-date"></span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB FICHE VIERGE -->
-  <div id="ktp-fiche" class="tp">
-    <div class="card" style="max-width:700px">
-      <div class="sh"><span class="st">📋 Fiche KYC vierge — Aperçu</span><button class="btn bp2 bsm" onclick="kycGenFichePDF()">⬇ Générer PDF</button></div>
-      <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px;line-height:1.7">
-        Ce PDF vierge contient toutes les sections du parcours client CIF (4 étapes) dans un format imprimable. Vous pouvez l'envoyer par email au client pour qu'il le remplisse avant le rendez-vous.
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="pdf-doc-card" onclick="kycGenFichePDF(1)" style="cursor:pointer">
-          <div class="icon">📋</div>
-          <div class="info"><div class="title">Entrée en relation</div><div class="desc">Identité · Situation · IDD</div></div>
-          <div class="arrow">⬇</div>
-        </div>
-        <div class="pdf-doc-card" onclick="kycGenFichePDF(2)" style="cursor:pointer">
-          <div class="icon">🎯</div>
-          <div class="info"><div class="title">Questionnaire Objectifs</div><div class="desc">Patrimoine · Objectifs · Fiscalité</div></div>
-          <div class="arrow">⬇</div>
-        </div>
-        <div class="pdf-doc-card" onclick="kycGenFichePDF(3)" style="cursor:pointer">
-          <div class="icon">📊</div>
-          <div class="info"><div class="title">Connaissance client (AMF)</div><div class="desc">Profil risque · Expérience · Score</div></div>
-          <div class="arrow">⬇</div>
-        </div>
-        <div class="pdf-doc-card" onclick="kycGenFichePDF(4)" style="cursor:pointer">
-          <div class="icon">✅</div>
-          <div class="info"><div class="title">Déclaration d'adéquation</div><div class="desc">Recommandation · MIF2 · Signature</div></div>
-          <div class="arrow">⬇</div>
-        </div>
-      </div>
-      <div class="pdf-doc-card" onclick="kycGenFichePDF('all')" style="cursor:pointer;background:linear-gradient(135deg,var(--navy),var(--navy2));border:none;margin-top:8px">
-        <div class="icon" style="font-size:26px">📁</div>
-        <div class="info">
-          <div class="title" style="color:var(--gold2);font-size:14px">Dossier KYC complet (4 étapes)</div>
-          <div class="desc" style="color:rgba(255,255,255,.55)">Tout le parcours client en un seul PDF · Envoi par email</div>
-        </div>
-        <div class="arrow" style="color:var(--gold2);font-size:20px">⬇</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<!-- ━━━ PARCOURS CLIENT CIF (VIERGE) ━━━ -->
-<div class="pg" id="pg-parcours-cif">
-  <div class="ph">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="pt">Questionnaire connaissance</div></div><button class="btn bsm" style="background:var(--navy);color:var(--gold2);border:none;font-weight:700" onclick="exportAllDocs()">📁 Exporter les 4 docs PDF</button></div>
-    <div class="ps">Connaissance & Compétence · Évaluation du risque · Profil AMF</div>
-  </div>
-  <div id="cif-parcours-wrap"></div>
 </div>
 
 
-<!-- ━━━ PARCOURS CLIENTS ━━━ -->
+
 <div class="pg" id="pg-pc-entree">
   <div class="ph">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -625,379 +523,6 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
     </div>
   </div>
   <div id="pc-adequation-wrap"></div>
-</div>
-
-<!-- ━━━ LCB-FT ━━━ -->
-<div class="pg" id="pg-parcours-client">
-  <div class="ph">
-    <div class="pt">Parcours client</div>
-    <div class="ps">Entrée en relation · Questionnaire Objectifs · Déclaration d'adéquation</div>
-  </div>
-  <div style="display:flex;gap:0;border-bottom:1.5px solid var(--bdr2);margin-bottom:0">
-    <button class="tb on" id="pc-tab-er"   onclick="pcTab('er',this)">📋 Entrée en relation</button>
-    <button class="tb"    id="pc-tab-obj"  onclick="pcTab('obj',this)">🎯 Objectifs</button>
-    <button class="tb"    id="pc-tab-adeq" onclick="pcTab('adeq',this)">✅ Adéquation</button>
-  </div>
-  <div id="pc-tp-er" class="tp on" style="padding-top:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--navy)">📋 Document d'entrée en relation</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">IDD obligatoire · Identité &amp; Situation</div></div>
-      <button class="btn bp2 bsm" onclick="generateBlankPDF(1)">⬇ Télécharger PDF</button>
-    </div>
-    <div id="pc-wrap-er"></div>
-  </div>
-  <div id="pc-tp-obj" class="tp" style="padding-top:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--navy)">🎯 Questionnaire Objectifs</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">Objectifs patrimoniaux · Situation financière</div></div>
-      <button class="btn bp2 bsm" onclick="generateBlankPDF(2)">⬇ Télécharger PDF</button>
-    </div>
-    <div id="pc-wrap-obj"></div>
-  </div>
-  <div id="pc-tp-adeq" class="tp" style="padding-top:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--navy)">✅ Déclaration d'adéquation</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">Recommandation MIF2 · Profil · Signature</div></div>
-      <button class="btn bp2 bsm" onclick="generateBlankPDF(4)">⬇ Télécharger PDF</button>
-    </div>
-    <div id="pc-wrap-adeq"></div>
-  </div>
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--cream2)" id="pc-footer"></div>
-</div>
-
-<div class="pg" id="pg-lcbft">
-  <div class="ph">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div>
-        <div class="pt">LCB-FT — Conformité</div>
-        <div class="ps">Lutte contre le blanchiment · Financement du terrorisme · Registre CGP/CIF · Veille Tracfin</div>
-      </div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="btn bgh bsm" onclick="lcbGenPDF()">📄 Exporter registre PDF</button>
-        <button class="btn bp2 bsm" onclick="lcbNewFiche()">＋ Nouvelle fiche client</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TABS LCB-FT -->
-  <div style="display:flex;gap:0;border-bottom:2px solid var(--bdr);margin-bottom:16px">
-    <button class="tb on" id="ltab-registre" onclick="lcbTab('registre',this)">📋 Registre clients</button>
-    <button class="tb" id="ltab-procedure" onclick="lcbTab('procedure',this)">📜 Procédure LCB-FT</button>
-    <button class="tb" id="ltab-tracfin"  onclick="lcbTab('tracfin',this)">🔔 Veille Tracfin <span class="nbadge" id="tracfin-badge" style="display:none">!</span></button>
-    <button class="tb" id="ltab-stats"    onclick="lcbTab('stats',this)">📊 Statistiques</button>
-  </div>
-
-  <!-- TAB: REGISTRE CLIENTS -->
-  <div id="ltp-registre" class="tp on">
-    <!-- KPIs -->
-    <div class="g4" id="lcb-kpis" style="margin-bottom:14px"></div>
-    <!-- Filtres -->
-    <div class="card" style="padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <input class="fc" id="lcb-search" placeholder="🔍 Rechercher un client..." style="max-width:220px;flex:1" oninput="lcbFilter()">
-      <select class="fc" id="lcb-filter-risk" style="width:140px" onchange="lcbFilter()">
-        <option value="">Tous les risques</option>
-        <option value="faible">Faible</option>
-        <option value="standard">Standard</option>
-        <option value="eleve">Élevé</option>
-      </select>
-      <select class="fc" id="lcb-filter-statut" style="width:150px" onchange="lcbFilter()">
-        <option value="">Tous statuts</option>
-        <option value="ok">✓ Validé</option>
-        <option value="attente">⏳ En attente</option>
-        <option value="alerte">🔴 Alerte</option>
-        <option value="revision">📅 À réviser</option>
-      </select>
-    </div>
-    <!-- Tableau registre -->
-    <div class="card" style="padding:0;overflow:hidden">
-      <table class="tbl hov" style="font-size:12px">
-        <thead><tr>
-          <th>Client</th><th>Risque</th><th>PPE</th><th>Origine fonds</th>
-          <th>Dernière revue</th><th>Prochaine revue</th><th>Statut</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="lcb-tbl"></tbody>
-      </table>
-    </div>
-    <!-- Fiche création/édition (modal inline) -->
-    <div id="lcb-fiche-modal" style="display:none;margin-top:16px">
-      <div class="card" style="border:2px solid var(--gold)">
-        <div class="sh">
-          <span class="st" id="lcb-fiche-title">Nouvelle fiche LCB-FT</span>
-          <button class="btn bd bsm" onclick="document.getElementById('lcb-fiche-modal').style.display='none'">✕ Annuler</button>
-        </div>
-        <div class="fg2" style="margin-bottom:.6rem">
-          <div class="fg"><label class="fl">Client</label>
-            <select class="fc" id="lcb-f-client" onchange="lcbAutoFill()">
-              <option value="">— Sélectionner un client —</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">Niveau de risque</label>
-            <select class="fc" id="lcb-f-risque" onchange="lcbUpdateDiligence()">
-              <option value="faible">Faible</option>
-              <option value="standard">Standard (modéré)</option>
-              <option value="eleve">Élevé</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">PPE (Pers. Politiquement Exposée)</label>
-            <select class="fc" id="lcb-f-ppe">
-              <option value="non">Non</option>
-              <option value="oui">Oui — PPE direct</option>
-              <option value="proche">Oui — Proche PPE</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">FATCA / US Person</label>
-            <select class="fc" id="lcb-f-fatca">
-              <option value="non">Non</option>
-              <option value="oui">Oui</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">Résidence fiscale</label>
-            <input class="fc" id="lcb-f-residence" placeholder="France">
-          </div>
-          <div class="fg"><label class="fl">NIF / N° fiscal</label>
-            <input class="fc" id="lcb-f-nif" placeholder="Numéro fiscal">
-          </div>
-        </div>
-        <div class="fg" style="margin-bottom:.6rem">
-          <label class="fl">Origine des fonds (cocher tout ce qui s'applique)</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="lcb-f-origines">
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="salaires"> Salaires/Revenus professionnels</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="heritage"> Héritage/Donation</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="cession"> Cession d'actifs</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="epargne"> Épargne accumulée</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="immobilier"> Revenus immobiliers</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="dividendes"> Dividendes/Rentes</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="autre"> Autre</label>
-          </div>
-        </div>
-        <div class="fg2" style="margin-bottom:.6rem">
-          <div class="fg"><label class="fl">Montant estimé des fonds (€)</label>
-            <input class="fc" id="lcb-f-montant" type="number" placeholder="0">
-          </div>
-          <div class="fg"><label class="fl">Date de la revue</label>
-            <input class="fc" id="lcb-f-date-revue" type="date">
-          </div>
-          <div class="fg"><label class="fl">Fréquence de révision</label>
-            <select class="fc" id="lcb-f-freq">
-              <option value="12">Annuelle (risque faible)</option>
-              <option value="6">Semestrielle (risque standard)</option>
-              <option value="3">Trimestrielle (risque élevé)</option>
-            </select>
-          </div>
-          <div class="fg"><label class="fl">Diligences effectuées</label>
-            <select class="fc" id="lcb-f-diligences">
-              <option value="simplifiees">Diligences simplifiées</option>
-              <option value="normales" selected>Diligences normales</option>
-              <option value="renforcees">Diligences renforcées (art. L.561-10)</option>
-            </select>
-          </div>
-        </div>
-        <div class="fg" style="margin-bottom:.6rem">
-          <label class="fl">Pièces justificatives collectées</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="lcb-f-pieces">
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="cni"> CNI/Passeport</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="justif_dom"> Justificatif domicile</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="avis_imp"> Avis d'imposition</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="releves"> Relevés bancaires</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="justif_fonds"> Justificatif origine fonds</label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" value="kbis"> Kbis (si société)</label>
-          </div>
-        </div>
-        <div class="fg" style="margin-bottom:.75rem">
-          <label class="fl">Notes / Observations</label>
-          <textarea class="fc" id="lcb-f-notes" rows="2" placeholder="Remarques, points d'attention, éléments atypiques..."></textarea>
-        </div>
-        <div id="lcb-f-alerte-zone" style="display:none;background:var(--red2);border:1px solid var(--red);border-radius:6px;padding:10px 14px;margin-bottom:.75rem;font-size:12px">
-          <strong style="color:var(--red)">⚠️ Risque élevé détecté</strong> — Des diligences renforcées sont obligatoires (art. L.561-10 CMF). Envisagez une déclaration de soupçon si des éléments anormaux sont relevés.
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn bp2" onclick="lcbSaveFiche()">✓ Enregistrer la fiche</button>
-          <button class="btn bgh bsm" onclick="lcbGenFichePDF()">📄 Générer PDF</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: PROCÉDURE LCB-FT -->
-  <div id="ltp-procedure" class="tp">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-
-      <div class="card">
-        <div class="sh"><span class="st">📜 Votre procédure LCB-FT (CGP/CIF)</span></div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:12px">
-          En tant que CIF soumis à la directive AMLD5 et au code monétaire et financier (L.561-2), vous êtes assujetti aux obligations LCB-FT. Voici votre procédure interne à jour.
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">1. IDENTIFICATION & VÉRIFICATION</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Avant toute entrée en relation : vérification d'identité (CNI/passeport), justificatif de domicile, identification du bénéficiaire effectif. Mise à jour annuelle ou lors de changements significatifs.
-            </div>
-          </div>
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--gold)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">2. ÉVALUATION DES RISQUES</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Classification en 3 niveaux (faible/standard/élevé). Critères : pays d'origine, PPE, montants, complexité des opérations. Revue annuelle minimale, trimestrielle si risque élevé.
-            </div>
-          </div>
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--orange)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">3. DILIGENCES RENFORCÉES (PPE/Risque élevé)</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Collecte justificatifs d'origine des fonds, validation hiérarchique, surveillance renforcée des opérations. Obligations art. L.561-10 CMF.
-            </div>
-          </div>
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--red)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">4. DÉCLARATION DE SOUPÇON (DS)</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Toute opération suspecte doit être déclarée à Tracfin via <strong>e-Tracfin</strong> (tracfin.gouv.fr) dans les meilleurs délais. Confidentialité absolue — ne pas informer le client.
-            </div>
-          </div>
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--blue)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">5. CONSERVATION DES DOCUMENTS</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Conservation 5 ans après la fin de la relation d'affaires (art. L.561-12 CMF). Toutes les diligences et pièces doivent être traçées dans ce registre.
-            </div>
-          </div>
-          <div style="background:var(--cream2);border-radius:7px;padding:12px 14px;border-left:3px solid var(--green)">
-            <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">6. FORMATION & VEILLE</div>
-            <div style="font-size:11.5px;color:var(--text);line-height:1.7">
-              Formation annuelle obligatoire. Veille régulière des publications Tracfin, ACPR et AMF. Mise à jour de la cartographie des risques chaque année.
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="btn bp2 bsm" onclick="lcbGenProcedurePDF()">📄 Exporter procédure PDF</button>
-        </div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="card">
-          <div class="sh"><span class="st">⚖️ Obligations légales clés</span></div>
-          <table class="tbl" style="font-size:11.5px">
-            <thead><tr><th>Obligation</th><th>Référence</th><th>Échéance</th></tr></thead>
-            <tbody>
-              <tr><td>Identification client</td><td>L.561-5 CMF</td><td style="color:var(--green);font-weight:600">Avant entrée</td></tr>
-              <tr><td>Mise à jour dossier</td><td>L.561-6 CMF</td><td>Annuelle</td></tr>
-              <tr><td>Registre PPE</td><td>L.561-10 CMF</td><td>Permanent</td></tr>
-              <tr><td>Déclaration soupçon</td><td>L.561-15 CMF</td><td style="color:var(--red);font-weight:600">Immédiat</td></tr>
-              <tr><td>Conservation documents</td><td>L.561-12 CMF</td><td>5 ans</td></tr>
-              <tr><td>Formation LCB-FT</td><td>L.561-33 CMF</td><td>Annuelle</td></tr>
-              <tr><td>Cartographie risques</td><td>Lignes ACPR</td><td>Annuelle</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <div class="sh"><span class="st">🔗 Liens utiles</span></div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <a href="https://www.tracfin.gouv.fr/fr/declarer/e-tracfin" target="_blank" style="color:var(--blue);font-size:12px;text-decoration:none">🌐 e-Tracfin — Plateforme de déclaration</a>
-            <a href="https://www.amf-france.org/fr/reglementation/demarches-et-procedures/lutte-contre-le-blanchiment-de-capitaux" target="_blank" style="color:var(--blue);font-size:12px;text-decoration:none">📋 AMF — LCB-FT pour CIF</a>
-            <a href="https://acpr.banque-france.fr/lutte-anti-blanchiment-et-financement-du-terrorisme" target="_blank" style="color:var(--blue);font-size:12px;text-decoration:none">🏛️ ACPR — Lignes directrices</a>
-            <a href="https://www.orias.fr" target="_blank" style="color:var(--blue);font-size:12px;text-decoration:none">📝 ORIAS — Registre des intermédiaires</a>
-          </div>
-        </div>
-        <div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy2));border:none">
-          <div style="font-size:11px;font-weight:700;color:var(--gold2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase">Votre identifiant Tracfin</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:10px">
-            Pour déclarer via e-Tracfin, vous avez besoin de votre numéro ORIAS (24007767) et de vos identifiants e-Tracfin. 
-          </div>
-          <div style="font-size:11.5px;color:var(--gold2)">ORIAS : 24007767</div>
-          <div style="font-size:11.5px;color:rgba(255,255,255,.6);margin-top:4px">Profession : Conseiller en Investissements Financiers</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: VEILLE TRACFIN -->
-  <div id="ltp-tracfin" class="tp">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-      <div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy2));border:none">
-        <div style="font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Bulletins Tracfin reçus</div>
-        <div class="kv" style="color:var(--gold2);font-size:24px" id="tracfin-count">0</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:4px">Enregistrés dans le registre</div>
-      </div>
-      <div class="card">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Dernière mise à jour</div>
-        <div class="kv" style="font-size:18px" id="tracfin-last-date">—</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">Veille automatique</div>
-      </div>
-    </div>
-
-    <!-- Intégration Gmail Tracfin -->
-    <div class="card" style="margin-bottom:14px">
-      <div class="sh">
-        <span class="st">📧 Intégration Gmail — Emails Tracfin</span>
-        <div style="display:flex;gap:6px">
-          <button class="btn bp2 bsm" onclick="tracfinFetchGmail()" id="btn-tracfin-sync">🔄 Synchroniser Gmail</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px">
-        Connectez votre Gmail pour récupérer automatiquement les emails Tracfin (<em>tracfin@finances.gouv.fr</em>, <em>noreply@tracfin.gouv.fr</em>). Les bulletins sont extraits et classés automatiquement.
-      </div>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:10px">
-        <div class="fg">
-          <label class="fl">OAuth Token Gmail (depuis Google Cloud Console)</label>
-          <input class="fc" id="tracfin-gmail-token" type="password" placeholder="Bearer token Gmail API...">
-        </div>
-        <button class="btn bgh bsm" onclick="tracfinTestGmail()">Tester la connexion</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);background:var(--cream2);border-radius:6px;padding:9px 12px;line-height:1.7">
-        💡 <strong>Comment obtenir le token :</strong> Google Cloud Console → APIs → Gmail API → Credentials → OAuth 2.0 → votre compte → <em>Access Token</em>. 
-        Ou utilisez l'intégration Gmail déjà configurée dans l'onglet Paramètres si disponible.
-      </div>
-      <div id="tracfin-gmail-status" style="margin-top:10px;display:none"></div>
-    </div>
-
-    <!-- Saisie manuelle bulletin Tracfin -->
-    <div class="card" style="margin-bottom:14px">
-      <div class="sh"><span class="st">📥 Enregistrer un bulletin Tracfin</span></div>
-      <div class="fg2" style="margin-bottom:.6rem">
-        <div class="fg"><label class="fl">Date du bulletin</label><input class="fc" id="tf-date" type="date"></div>
-        <div class="fg"><label class="fl">Type</label>
-          <select class="fc" id="tf-type">
-            <option value="tendances">Tendances & Analyse</option>
-            <option value="alerte">Alerte sectorielle</option>
-            <option value="circulaire">Circulaire / Instruction</option>
-            <option value="rapport">Rapport annuel</option>
-            <option value="autre">Autre communication</option>
-          </select>
-        </div>
-        <div class="fg form-full" style="grid-column:1/-1"><label class="fl">Objet / Titre</label><input class="fc" id="tf-objet" placeholder="ex: Tendances et analyse — Secteur gestion de patrimoine 2024"></div>
-        <div class="fg form-full" style="grid-column:1/-1"><label class="fl">Résumé / Points d'attention pour votre activité</label>
-          <textarea class="fc" id="tf-resume" rows="3" placeholder="Points clés et impact sur votre activité CIF..."></textarea>
-        </div>
-        <div class="fg"><label class="fl">Mesures prises</label>
-          <select class="fc" id="tf-mesures">
-            <option value="information">Prise de connaissance</option>
-            <option value="mise-a-jour">Mise à jour procédure</option>
-            <option value="formation">Formation déclenchée</option>
-            <option value="declaration">Déclaration de soupçon</option>
-            <option value="revue-portefeuille">Revue portefeuille clients</option>
-          </select>
-        </div>
-        <div class="fg"><label class="fl">Lien / URL du bulletin</label><input class="fc" id="tf-url" placeholder="https://www.tracfin.gouv.fr/..."></div>
-      </div>
-      <button class="btn bp2 bsm" onclick="tracfinSave()">✓ Enregistrer dans le registre</button>
-    </div>
-
-    <!-- Liste des bulletins enregistrés -->
-    <div class="card">
-      <div class="sh"><span class="st">📚 Registre des bulletins Tracfin</span><span style="font-size:10px;color:var(--muted)" id="tracfin-total">0 bulletin(s)</span></div>
-      <div id="tracfin-list"></div>
-    </div>
-  </div>
-
-  <!-- TAB: STATISTIQUES -->
-  <div id="ltp-stats" class="tp">
-    <div class="g4" id="lcb-stats-kpis" style="margin-bottom:14px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="card">
-        <div class="sh"><span class="st">Répartition par niveau de risque</span></div>
-        <canvas id="lcb-risque-chart" height="180"></canvas>
-      </div>
-      <div class="card">
-        <div class="sh"><span class="st">Clients à réviser</span></div>
-        <div id="lcb-revision-list"></div>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <!-- ━━━ MESSAGERIE ━━━ -->
@@ -1256,6 +781,7 @@ function go(pg,el){
     import:()=>rdImport(),
     alerts:()=>rdAlerts(),
     settings:()=>{ loadSettings(); },
+    'docs-vierges':()=>{ /* page statique */ },
     'pc-entree':()=>pcLoad('entree'),
     'pc-objectifs':()=>pcLoad('objectifs'),
     'pc-connaissance':()=>pcLoad('connaissance'),
@@ -1397,7 +923,8 @@ function cTab(tid,btn){
   const el=document.getElementById('tp-'+tid); if(el) el.classList.add('on');
   const c=gc(CID); if(!c) return;
   ({parcours:()=>rdTabParcours(c),lcbft_c:()=>rdTabLCBFT(c),patrimoine_c:()=>rdTabPat(c),
-    docs_c:()=>rdTabDocs(c),historique_c:()=>rdTabHist(c),msgs_c:()=>rdTabMsgs(c)}[tid]||(() => {}))();
+    docs_c:()=>rdTabDocs(c),historique_c:()=>rdTabHist(c),msgs_c:()=>rdTabMsgs(c),
+    ptf_c:()=>rdTabPtfEvol(c),sign_c:()=>rdTabSign(c)}[tid]||(() => {}))();
 }
 
 // ── PARCOURS
@@ -1942,37 +1469,70 @@ async function jbPutCRM(id,d){const r=await fetch(`https://api.jsonbin.io/v3/b/$
 
 
 // ━━━ ONGLET ÉVOLUTION PORTEFEUILLE (BASE 100) ━━━
+
+// ═══ PORTEFEUILLE - Saisie manuelle ═══
+function ptfSaveEntry(cid){
+  var dateVal  = document.getElementById('ptf-e-date')  ? document.getElementById('ptf-e-date').value  : '';
+  var valStr   = document.getElementById('ptf-e-val')   ? document.getElementById('ptf-e-val').value   : '';
+  var perfStr  = document.getElementById('ptf-e-perf')  ? document.getElementById('ptf-e-perf').value  : '';
+  var profilEl = document.getElementById('ptf-e-profil');
+  var valeur   = parseFloat(valStr)||0;
+
+  if(!dateVal||!valeur){ toast('Date et valeur requis','error'); return; }
+
+  var idx2 = CLIENTS.findIndex(function(c){ return c.id===cid; });
+  if(idx2<0){ toast('Client introuvable','error'); return; }
+
+  var cc = CLIENTS[idx2];
+  if(!cc.patrimoine) cc.patrimoine = {};
+  if(!cc.patrimoine.historique) cc.patrimoine.historique = [];
+
+  var d = new Date(dateVal+'-01');
+  var label = d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
+
+  // Calcul automatique de la performance par rapport à la valeur initiale
+  var hist = cc.patrimoine.historique;
+  var valDepart = hist.length ? hist[0].valeur : valeur;
+  var perf = perfStr ? parseFloat(perfStr)
+           : (valDepart && valDepart!==valeur)
+             ? parseFloat(((valeur - valDepart) / valDepart * 100).toFixed(2))
+             : 0;
+
+  var existing = cc.patrimoine.historique.findIndex(function(h){ return h.dateRaw===dateVal; });
+  var entry = {date:label, valeur:valeur, perf:perf, dateRaw:dateVal};
+
+  if(existing>=0) cc.patrimoine.historique[existing] = entry;
+  else            cc.patrimoine.historique.push(entry);
+  cc.patrimoine.historique.sort(function(a,b){ return a.dateRaw<b.dateRaw?-1:1; });
+
+  // Recalculer toutes les perfs par rapport à la première valeur
+  var base = cc.patrimoine.historique[0].valeur;
+  cc.patrimoine.historique.forEach(function(h){
+    h.perf = base ? parseFloat(((h.valeur-base)/base*100).toFixed(2)) : 0;
+  });
+
+  cc.patrimoine.valeur  = valeur;
+  cc.patrimoine.dateMAJ = label;
+  cc.patrimoine.perfYTD = perf;
+  if(profilEl&&profilEl.value) cc.profil = profilEl.value;
+
+  // ⚠️ Stocker aussi dans ptfHistory pour le portail
+  cc.ptfHistory = cc.patrimoine.historique;
+
+  saveClientsLocal();
+  syncPtfToPortail(cc);
+  rdTabPtfEvol(cc);
+  rdDetail();
+  toast('✓ Entrée enregistrée et envoyée au portail','success');
+}
+
 function rdTabPtfEvol(c) {
   var hist = (c.patrimoine && c.patrimoine.historique) ? c.patrimoine.historique : [];
   var ptfEl = document.getElementById('tp-ptf_c');
   if(!ptfEl) return;
 
-  // ── Sauvegarder une entrée manuelle ──
-  window._ptfSaveEntry = function(cid) {
-    var dateVal = document.getElementById('ptf-e-date').value;
-    var valeur  = parseFloat(document.getElementById('ptf-e-val').value)||0;
-    var perf    = document.getElementById('ptf-e-perf').value;
-    var profilEl = document.getElementById('ptf-e-profil');
-    if(!dateVal||!valeur){ toast('Date et valeur requis','error'); return; }
-    var cc = gc(cid); if(!cc) return;
-    if(!cc.patrimoine) cc.patrimoine = {};
-    if(!cc.patrimoine.historique) cc.patrimoine.historique = [];
-    var d = new Date(dateVal+'-01');
-    var label = d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
-    var existing = cc.patrimoine.historique.findIndex(function(h){return h.dateRaw===dateVal;});
-    var entry = {date:label, valeur:valeur, perf:perf?parseFloat(perf):null, dateRaw:dateVal};
-    if(existing >= 0) cc.patrimoine.historique[existing] = entry;
-    else cc.patrimoine.historique.push(entry);
-    cc.patrimoine.historique.sort(function(a,b){return a.dateRaw<b.dateRaw?-1:1;});
-    cc.patrimoine.valeur = valeur;
-    cc.patrimoine.dateMAJ = label;
-    if(perf) cc.patrimoine.perfYTD = parseFloat(perf)||0;
-    if(profilEl&&profilEl.value){ cc.profil=profilEl.value; }
-    lsSave();
-    syncPtfToPortail(cc);
-    rdTabPtfEvol(cc);
-    toast('Entrée enregistrée et envoyée au portail ✓','success');
-  };
+  // ── Sauvegarder une entrée manuelle (voir ptfSaveEntry global) ──
+  window._ptfSaveEntry = ptfSaveEntry;
 
   window._ptfDeleteEntry = function(cid, idx) {
     var cc = gc(cid); if(!cc||!cc.patrimoine||!cc.patrimoine.historique) return;
@@ -2131,6 +1691,18 @@ function rdTabPtfEvol(c) {
 
   // ── Dessiner le graphique base 100 ──
   if(hist.length>=2 && typeof Chart !== 'undefined'){
+    // Auto-calcul perf quand on saisit une valeur
+    var ptfValInp = document.getElementById('ptf-e-val');
+    var ptfPerfInp = document.getElementById('ptf-e-perf');
+    if(ptfValInp && ptfPerfInp){
+      ptfValInp.oninput = function(){
+        var v = parseFloat(this.value)||0;
+        if(!v || !hist.length) return;
+        var base2 = hist[0].valeur;
+        if(base2) ptfPerfInp.value = ((v-base2)/base2*100).toFixed(2);
+      };
+    }
+
     setTimeout(function(){
       var canvas = document.getElementById('ptf-base100-chart');
       if(!canvas) return;
@@ -2229,10 +1801,11 @@ function syncPtfToPortail(c) {
     if(!data.messages[k]) data.messages[k] = {prenom:c.prenom,nom:c.nom,email:c.email,msgs:[],docs:[]};
     if(!data.messages[k].patrimoine) data.messages[k].patrimoine = {};
     data.messages[k].patrimoine = Object.assign(data.messages[k].patrimoine, c.patrimoine||{});
-    // Historique - stocker aux deux endroits pour compatibilité portail
-    if(c.ptfHistory && c.ptfHistory.length) {
-      data.messages[k].patrimoine.historique = c.ptfHistory;
-      data.messages[k].ptfHistory = c.ptfHistory;
+    // Historique - toujours depuis patrimoine.historique
+    var hist2 = c.ptfHistory || (c.patrimoine&&c.patrimoine.historique) || [];
+    if(hist2.length) {
+      data.messages[k].patrimoine.historique = hist2;
+      data.messages[k].ptfHistory = hist2;
     }
     // Profil
     var profilEl = document.getElementById('ptf-e-profil');
@@ -5235,6 +4808,351 @@ function pcInitRadio(container){
     });
   });
 }
+
+
+
+function genDocViergeAdequation(today2){
+  var css = buildPdfCss()
+    +'.fld{border:none;border-bottom:1.5px solid #333;display:inline-block;min-width:80px;vertical-align:bottom;padding:0 3px}'
+    +'.sig-block{border:1px solid #888;min-height:45px;width:52%;margin-top:6px}';
+
+  var H = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Déclaration d\'adéquation</title><style>'+css+'</style></head><body>'
+    + buildPdfHeader("DÉCLARATION D'ADÉQUATION", today2, '')
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin:0 26px 14px;font-size:10pt;font-weight:bold">Nom, Prénom <span class="fld" style="min-width:240px">&nbsp;</span></div>'
+    +'<div class="body">'
+
+    +'<div class="sec-title">A. Rappel des besoins et objectifs du client</div>'
+    +'<div class="grid-1">'
+    +'<div class="row"><div class="lbl">Rappel de la demande du client</div><div class="val"><span class="fld" style="min-width:100%;display:block;height:40px">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Rappel des objectifs</div><div class="val"><span class="fld" style="min-width:100%;display:block;height:40px">&nbsp;</span></div></div>'
+    +'</div>'
+    +'<div class="grid">'
+    +'<div class="row"><div class="lbl">Profil de risque validé</div><div class="val"><span class="fld" style="min-width:140px">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Horizon de placement</div><div class="val"><span class="fld" style="min-width:140px">&nbsp;</span></div></div>'
+    +'</div>'
+
+    +'<div class="sec-title" style="margin-top:12px">B. Solution(s) recommandée(s)</div>'
+    +'<div class="grid-1">'
+    +'<div class="row"><div class="lbl">Solution recommandée (Solution 1)</div><div class="val"><span class="fld" style="min-width:100%;display:block">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Solution alternative (Solution 2)</div><div class="val"><span class="fld" style="min-width:100%;display:block">&nbsp;</span></div></div>'
+    +'</div>'
+    +'<div class="grid">'
+    +'<div class="row"><div class="lbl">Contrat de référence</div><div class="val"><span class="fld" style="min-width:140px">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Solution retenue n°</div><div class="val"><span class="fld" style="min-width:60px">&nbsp;</span></div></div>'
+    +'</div>'
+    +'<div class="grid-1">'
+    +'<div class="row"><div class="lbl">Justification de l\'adéquation</div><div class="val"><span class="fld" style="min-width:100%;display:block;height:55px">&nbsp;</span></div></div>'
+    +'</div>'
+
+    +'<div class="sec-title" style="margin-top:12px">C. Checklist adéquation MIF II</div>'
+    +'<div style="font-size:9pt;padding:6px 0">'
+    +'<p style="margin-bottom:6px">☐&nbsp; La recommandation est adaptée au client</p>'
+    +'<p style="margin-bottom:6px">☐&nbsp; Conforme aux objectifs déclarés</p>'
+    +'<p style="margin-bottom:6px">☐&nbsp; Durée d\'investissement conforme</p>'
+    +'<p style="margin-bottom:6px">☐&nbsp; Adaptée aux connaissances et à l\'expérience</p>'
+    +'<p style="margin-bottom:6px">☐&nbsp; Intègre les préférences ESG</p>'
+    +'<p style="margin-bottom:6px">☐&nbsp; Le client a reçu les documents requis (DIC, DICI…)</p>'
+    +'</div>'
+
+    +'<div class="sec-title" style="margin-top:12px">D. Frais et coûts</div>'
+    +'<div class="grid">'
+    +'<div class="row"><div class="lbl">Frais de courtage (%)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Frais administratifs (%)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Frais de gestion financière (%)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Frais de dépositaire (%)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Honoraires de conseil (%)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'<div class="row"><div class="lbl">Montant total des frais annuels (€)</div><div class="val"><span class="fld">&nbsp;</span></div></div>'
+    +'</div>'
+    +'<div class="grid-1">'
+    +'<div class="row"><div class="lbl">Détail des rétrocessions éventuelles</div><div class="val"><span class="fld" style="min-width:100%;display:block;height:30px">&nbsp;</span></div></div>'
+    +'</div>'
+
+    +'<div class="sec-title" style="margin-top:14px">Signature</div>'
+    +'<div style="font-size:9.5pt;padding:8px 0">'
+    +'<p>Fait à <span class="fld" style="min-width:90px">&nbsp;</span>, le <span class="fld" style="min-width:70px">&nbsp;</span></p>'
+    +'<p style="margin-top:10px">Signature du client précédée de la mention <em>"Lu et approuvé"</em></p>'
+    +'<div class="sig-block"></div>'
+    +'<p style="margin-top:20px;font-size:8pt;color:#5a6a7a;font-style:italic">Caremma Finance — Conseiller en Investissements Financiers — ORIAS n°24007767<br>Document confidentiel — MIF2 — Directive DDA — À conserver 5 ans après la fin de la relation</p>'
+    +'</div>'
+
+    +'</div>'
+    + buildPdfFooter(today2)
+    +'</body></html>';
+
+  var win = window.open('','_blank','width=870,height=1080');
+  if(win){ win.document.write(H); win.document.close(); win.focus(); setTimeout(function(){win.print();},700); }
+  toast("Déclaration d'adéquation vierge ouverte ✓",'success');
+}
+
+
+function genDocVierge(type){
+  var today2 = new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+
+  if(type==='all'){
+    ['entree','objectifs','connaissance','adequation'].forEach(function(t,i){
+      setTimeout(function(){ genDocVierge(t); }, i*1200);
+    });
+    return;
+  }
+
+  if(type==='entree'){
+    genDocViergeEntree(today2);
+    return;
+  }
+
+  // Générer depuis _PARCOURS_PDF_B64
+  var psMap = {objectifs:'ps2', connaissance:'ps3', adequation:'ps4'};
+  var psId  = psMap[type];
+  if(!psId){ toast('Type inconnu','error'); return; }
+
+  if(type==='adequation'){
+    genDocViergeAdequation(today2);
+    return;
+  }
+  var titles = {
+    objectifs: 'Questionnaire Objectifs de Placement',
+    connaissance: 'Connaissance & Compétence AMF',
+    adequation: "Déclaration d'Adéquation"
+  };
+
+  var decoded = decodeURIComponent(
+    Array.from(atob(_PARCOURS_PDF_B64)).map(function(ch){
+      return '%' + ch.charCodeAt(0).toString(16).padStart(2,'0');
+    }).join('')
+  );
+  var tmp = document.createElement('div');
+  tmp.innerHTML = decoded;
+  var ps = tmp.querySelector('#'+psId);
+  if(!ps){ toast('Section non trouvée','error'); return; }
+  ps.style.display='block';
+
+  // Construire HTML vierge remplissable avec le même style
+  var css = buildPdfCss()
+    +'.field{border:none;border-bottom:1px solid #aaa;min-width:120px;display:inline-block;padding:1px 3px;font-family:Georgia,serif}'
+    +'.field-box{border:1px solid #aaa;padding:3px 6px;min-width:80px;display:inline-block;font-family:Georgia,serif}'
+    +'.check-box{width:13px;height:13px;border:1.5px solid #888;display:inline-block;margin-right:4px;vertical-align:middle}'
+    +'.radio-box{width:13px;height:13px;border-radius:50%;border:1.5px solid #888;display:inline-block;margin-right:4px;vertical-align:middle}';
+
+  var body = buildPdfHeader(titles[type]||type, today2, '');
+  body += '<div class="body">';
+
+  // Rendre chaque section du questionnaire vierge
+  var sections_html = ps.querySelectorAll('.q-title,.section-header h2,h2');
+  sections_html.forEach(function(titleEl){
+    var heading = titleEl.textContent.trim();
+    if(!heading||heading.length<2) return;
+
+    body += '<div class="sec"><div class="sec-title">'+escHtml(heading)+'</div>';
+
+    var container = titleEl.parentElement;
+    if(!container){ body+='</div>'; return; }
+
+    var rows = [], fullRows = [];
+
+    // form-groups → lignes avec champ vierge
+    container.querySelectorAll('.form-group,.fg').forEach(function(fg){
+      var lbl = fg.querySelector('label,.fl');
+      if(!lbl) return;
+      var label = lbl.textContent.trim();
+      var inp   = fg.querySelector('input,select,textarea');
+      if(!inp) return;
+      var fieldHtml = '<span class="field" style="min-width:160px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>';
+      if((label||'').length>30||(inp&&inp.tagName==='TEXTAREA'))
+        fullRows.push({label:label, value:fieldHtml, html:true});
+      else
+        rows.push({label:label, value:fieldHtml, html:true});
+    });
+
+    // Radio-opts → cases vierges
+    var radioGroups = {};
+    container.querySelectorAll('.radio-opt').forEach(function(opt){
+      var inp = opt.querySelector('input[type=radio]');
+      if(!inp) return;
+      var name = inp.name||'grp';
+      if(!radioGroups[name]) radioGroups[name]=[];
+      radioGroups[name].push(opt.textContent.trim());
+    });
+    Object.keys(radioGroups).forEach(function(name){
+      var optsHtml = radioGroups[name].map(function(lbl){
+        return '<span class="radio-box"></span>'+escHtml(lbl)+'&nbsp;&nbsp;';
+      }).join('');
+      fullRows.push({label:'', value:optsHtml, html:true});
+    });
+
+    // Tables (connaissance produits)
+    container.querySelectorAll('table').forEach(function(table){
+      var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){ return th.textContent.trim(); });
+      if(!headers.length) return;
+      var tableHtml = '<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:9pt">'
+        +'<tr>';
+      headers.forEach(function(h){
+        tableHtml += '<th style="background:#0f1e35;color:#c9a84c;padding:5px 8px;font-size:8pt;text-align:'+(headers.indexOf(h)===0?'left':'center')+'">'+escHtml(h)+'</th>';
+      });
+      tableHtml += '</tr>';
+      table.querySelectorAll('tbody tr').forEach(function(tr,ri){
+        var cells = tr.querySelectorAll('td');
+        if(!cells.length) return;
+        tableHtml += '<tr style="background:'+(ri%2?'#fafafa':'white')+'">';
+        Array.from(cells).forEach(function(td,ci){
+          if(ci===0) tableHtml+='<td style="padding:5px 8px;border-bottom:1px solid #eee">'+escHtml(td.textContent.trim())+'</td>';
+          else tableHtml+='<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center"><span class="check-box"></span></td>';
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</table>';
+      fullRows.push({label:'', value:tableHtml, html:true, tableOnly:true});
+    });
+
+    // Rendu
+    if(rows.length){
+      body += '<div class="grid">';
+      rows.forEach(function(row){
+        body += '<div class="row"><div class="lbl">'+escHtml(row.label)+'</div><div class="val">'+row.value+'</div></div>';
+      });
+      body += '</div>';
+    }
+    if(fullRows.length){
+      fullRows.forEach(function(row){
+        if(row.tableOnly){
+          body += '<div style="margin-top:6px">'+row.value+'</div>';
+        } else if(row.label){
+          body += '<div class="grid-1" style="margin-top:4px"><div class="row"><div class="lbl">'+escHtml(row.label)+'</div><div class="val">'+row.value+'</div></div></div>';
+        } else {
+          body += '<div style="padding:6px 8px;font-size:9pt">'+row.value+'</div>';
+        }
+      });
+    }
+
+    body += '</div>';
+  });
+
+  // Signature
+  body += '<div class="sec" style="margin-top:12px"><div class="sec-title">Signature</div>'
+    +'<div style="padding:12px 8px;font-size:9.5pt">'
+    +'<p>Fait à <span class="field" style="min-width:100px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>, le <span class="field" style="min-width:80px">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></p>'
+    +'<p style="margin-top:12px">Signature précédée de la mention <em>"Lu et approuvé"</em></p>'
+    +'<div style="border:1px solid #888;height:55px;width:50%;margin-top:8px"></div>'
+    +'</div></div>';
+
+  body += '</div>';
+  body += buildPdfFooter(today2);
+
+  var H = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escHtml(titles[type])+'</title>'
+    +'<style>'+css+'</style></head><body>'+body+'</body></html>';
+
+  var win = window.open('','_blank','width=870,height=1080');
+  if(win){ win.document.write(H); win.document.close(); win.focus(); setTimeout(function(){win.print();},700); }
+  toast('Document vierge ouvert ✓','success');
+}
+
+function genDocViergeEntree(today2){
+  var css = buildPdfCss()
+    +'.fld{border:none;border-bottom:1.5px solid #333;display:inline-block;min-width:80px;vertical-align:bottom;padding:0 3px}'
+    +'.chk{width:13px;height:13px;border:1.5px solid #444;display:inline-block;margin-right:5px;vertical-align:middle;flex-shrink:0}'
+    +'.chk-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;font-size:9.5pt}'
+    +'.sig-block{border:1px solid #888;min-height:45px;width:52%;margin-top:6px}';
+
+  var H = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document d\'entrée en relation</title><style>'+css
+    +'.pb{page-break-after:always;break-after:page}'
+    +'</style></head><body>'
+    + buildPdfHeader("DOCUMENT D'ENTREE EN RELATION", today2, '')
+
+    // Encadré nom
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin:0 26px 14px;font-size:10pt;font-weight:bold">Nom, Prénom <span class="fld" style="min-width:260px">&nbsp;</span></div>'
+    +'<div class="body">'
+
+    +'<p style="margin-bottom:8px">Chère madame, Cher monsieur,</p>'
+    +'<p style="margin-bottom:8px;text-align:justify">Vous êtes entré(ees) en relation avec la société CAREMMA FINANCE dont l\'activité est réglementée et contrôlée et nous vous remercions pour votre confiance.</p>'
+    +'<p style="margin-bottom:14px;text-align:justify">La présente fiche comporte les informations légales que cet intermédiaire doit vous communiquer lors de l\'entrée en relation.</p>'
+
+    // Section A
+    +'<div class="sec-title">A. Informations préalables sur l\'intermédiaire</div>'
+    +'<div style="font-size:9pt;line-height:1.7;margin-bottom:10px">'
+    +'<p style="margin-bottom:5px;text-align:justify">CAREMMA FINANCE est immatriculé(e) au registre unique des intermédiaires en assurance, banque et finance (ORIAS - 1 rue Jules Lefebvre à Paris 75009) sous le numéro ….. (consultable sur le site www.orias.fr) en qualité de courtier d\'assurance.</p>'
+    +'<p style="margin-bottom:5px;text-align:justify">CAREMMA FINANCE SAS au capital de 500 EUROS, est immatriculé(e) au RCS de Pontoise sous le numéro 933537433 et a son siège social au 112 Rue Rouget de Lisle 95870 à Bezons (téléphone : 0626887500 ; courriel : marc.reverseau@caremmafinance.com)</p>'
+    +'<p style="margin-bottom:5px;text-align:justify">CAREMMA FINANCE est assuré au titre de sa responsabilité civile professionnelle et est bénéficiaire d\'une garantie financière auprès de la compagnie AIG , contrats n°RD01981091S</p>'
+    +'<p style="margin-bottom:5px;text-align:justify">La société CAREMMA FINANCE est contrôlé(e) par son Autorité de tutelle : l\'Autorité de Contrôle Prudentiel et de Résolution (ACPR) 4 Place de Budapest – CS 92459 – 75436 PARIS cedex 09.<br>Site internet : http://www.acpr.banque-france.fr/accueil.html</p>'
+    +'<p style="margin-bottom:5px;font-weight:bold;font-style:italic;text-align:justify">La société CAREMMA FINANCE est adhérent(e) à la CNCEF Assurance<sup>i</sup>, association professionnelle.</p>'
+    +'<p style="text-align:justify">- CAREMMA FINANCE n\'entretient pas de relation significative de nature capitalistique ou commerciale avec une entreprise d\'assurance (participation > à 10 % des droits de vote ou du capital).</p>'
+    +'</div>'
+
+    +'<div class="pb"></div>'
+
+    // Page 2 - Section B
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin-bottom:14px;font-size:10pt;font-weight:bold">Nom, Prénom</div>'
+    +'<div class="sec-title">B. Informations préalables relatives à la fourniture du contrat</div>'
+    +'<div style="font-size:9pt;line-height:1.7;margin-bottom:10px">'
+    +'<p style="margin-bottom:8px;text-align:justify">CAREMMA FINANCE n\'est pas soumis(e) à une obligation contractuelle de travailler exclusivement avec une ou plusieurs entreprises d\'assurance. Pour ce contrat, CAREMMA FINANCE fonde son analyse sur un nombre restreint de contrats présents sur le marché et les noms des entreprises d\'assurance avec lesquelles elle travaille sont les suivants :</p>'
+    +'<p style="margin-bottom:6px;font-style:italic">Lister les assureurs concernés</p>'
+    +'<div style="border:1px solid #bbb;height:22px;margin-bottom:5px;width:280px"></div>'
+    +'<div style="border:1px solid #bbb;height:22px;margin-bottom:5px;width:280px"></div>'
+    +'<div style="border:1px solid #bbb;height:22px;margin-bottom:14px;width:280px"></div>'
+    +'<p style="font-weight:bold;margin-bottom:3px">Service de recommandation personnalisé</p>'
+    +'<p style="margin-bottom:8px;text-align:justify">CAREMMA FINANCE est en mesure de fournir, un service de recommandation personnalisée concernant les contrats distribués. Ce service est optionnel et peut être payant.</p>'
+    +'<p style="font-weight:bold;margin-bottom:3px">Service d\'évaluation périodique <span style="font-weight:normal">(optionnel)</span></p>'
+    +'<p style="text-align:justify">Pour ce contrat, votre intermédiaire vous propose un service d\'évaluation périodique. Il procédera à une évaluation périodique <em>une fois par an</em> de l\'adéquation du produit d\'investissement recommandé, cette évaluation comportera une déclaration d\'adéquation mise à jour sur la manière dont l\'investissement initialement préconisé continue de répondre aux préférences, aux objectifs et aux autres caractéristiques du client. Ce service est optionnel et payant.</p>'
+    +'</div>'
+
+    +'<div class="pb"></div>'
+
+    // Page 3 - Rémunération
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin-bottom:14px;font-size:10pt;font-weight:bold">Nom, Prénom</div>'
+    +'<div class="sec-title">REMUNERATION</div>'
+    +'<div style="font-size:9.5pt;line-height:1.7;margin-bottom:10px">'
+    +'<p style="margin-bottom:10px">Pour ce contrat, la société CAREMMA FINANCE sera rémunérée sur la base :</p>'
+    +'<div class="chk-row"><span class="chk"></span><span>D\'un honoraire de conseil (rémunération payée directement par le souscripteur ou adhérent). Le montant des honoraires sera de ….. euros ou sera calculé de la façon suivante <span class="fld" style="min-width:70px">&nbsp;</span> des encours supervisés à chaque fin de trimestre.</span></div>'
+    +'<div class="chk-row"><span class="chk"></span><span>D\'une commission (rémunération incluse dans la prime d\'assurance) de <span class="fld" style="min-width:80px">&nbsp;</span></span></div>'
+    +'<div class="chk-row"><span class="chk"></span><span>De <span class="fld" style="min-width:60px">&nbsp;</span> des frais de gestion financière reversés par AURIS GESTION pour la mise en place de l\'allocation des contrats.</span></div>'
+    +'<div class="chk-row"><span class="chk"></span><span>D\'une combinaison des types de rémunération mentionnés ci-dessus, dont des honoraires d\'un montant de <span class="fld" style="min-width:80px">&nbsp;</span> des encours supervisés ou calculés de la façon suivante (1/4 calculé à chaque fin de trimestre sur le montant des encours constatés à date) et préciser tout autre type de rémunération <span class="fld" style="min-width:80px">&nbsp;</span></span></div>'
+    +'<p style="margin-top:6px">Le service de recommandation personnalisée est rémunéré comme suit <span class="fld" style="min-width:120px">&nbsp;</span></p>'
+    +'<p style="margin-top:4px">Le service d\'évaluation périodique est rémunéré comme suit <span class="fld" style="min-width:120px">&nbsp;</span></p>'
+    +'<div style="margin-top:18px"><p>Fait à <span class="fld" style="min-width:90px">&nbsp;</span>, le <span class="fld" style="min-width:70px">&nbsp;</span></p></div>'
+    +'<p style="margin-top:10px">Signature du client précédée de la mention lu et approuvé</p>'
+    +'<div class="sig-block"></div>'
+    +'</div>'
+
+    +'<div class="pb"></div>'
+
+    // Page 4 - Réclamation
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin-bottom:14px;font-size:10pt;font-weight:bold">Nom, Prénom</div>'
+    +'<div class="sec-title" style="text-transform:none">INFORMATIONS SUR LA PROCEDURE DE RECLAMATION ET LE RECOURS AU PROCESSUS DE MEDIATION</div>'
+    +'<div style="font-size:9pt;line-height:1.7">'
+    +'<p style="font-weight:bold;margin-bottom:3px">Saisine du service interne de réclamation :</p>'
+    +'<p style="margin-bottom:6px;text-align:justify">En cas de mécontentement vous pouvez formuler une réclamation écrite auprès de notre service interne de réclamation.</p>'
+    +'<p style="margin-bottom:2px">Le service réclamation peut être contacté selon les modalités suivantes :</p>'
+    +'<p>- Par courrier : Service réclamation, adresse de l\'entreprise</p>'
+    +'<p>- Par mail : marc.reverseau@caremmafinance.com</p>'
+    +'<p style="margin-bottom:8px">Personne à contacter en charge du suivi des réclamations :Marc REVERSEAU</p>'
+    +'<p style="margin-bottom:8px;text-align:justify">Pour les clients consommateurs, le médiateur de la consommation peut en tout état de cause être saisi deux mois après l\'envoi d\'une première réclamation écrite, quel que soit l\'interlocuteur ou le service auprès duquel elle a été formulée et qu\'il y ait été ou non répondu.</p>'
+    +'<p style="font-weight:bold;margin-bottom:3px">Saisine du médiateur de la consommation :</p>'
+    +'<p style="margin-bottom:6px;text-align:justify">Si le client consommateur n\'est pas satisfait de la réponse apportée à sa réclamation, il peut saisir gratuitement le médiateur de la consommation.</p>'
+    +'<p style="margin-bottom:8px">Le Médiateur de la consommation compétent est :</p>'
+    +'<div style="text-align:center;color:#cc0000;font-weight:bold;margin-bottom:10px;font-size:9.5pt">'
+    +'<p>CNP Mediation- Consommation</p><p>27 Avenue de la Libération</p><p>42400 SAINT CHAMOND</p>'
+    +'</div>'
+    +'<p style="margin-bottom:6px;text-align:justify">Le consommateur doit saisir le Nom du médiateur soit en utilisant le formulaire en ligne (lien vers le formulaire en ligne), soit par courrier électronique (adresse mail du médiateur), soit par courrier postal (Adresse postale du médiateur).</p>'
+    +'<p style="margin-bottom:10px;text-align:justify">Cette saisine ne peut intervenir qu\'après épuisement des voies de recours internes et doit préciser l\'objet du litige et être accompagnée des pièces justificatives.</p>'
+    +'<p style="margin-bottom:8px">Je soussigné(e) <span class="fld" style="min-width:150px">&nbsp;</span> atteste avoir reçu, pris connaissance et compris les informations données dans le cadre du présent document.</p>'
+    +'<p style="margin-bottom:6px">Etabli en deux exemplaires, dont un remis au client</p>'
+    +'<p>Fait à <span class="fld" style="min-width:90px">&nbsp;</span>, le <span class="fld" style="min-width:70px">&nbsp;</span></p>'
+    +'<p style="margin-top:10px">Signature du client précédée de la mention lu et approuvé</p>'
+    +'<div class="sig-block"></div>'
+    +'</div>'
+
+    +'<div class="pb"></div>'
+    // Page 5 vierge
+    +'<div style="border:1px solid #1a1a2e;padding:7px 14px;margin-bottom:14px;font-size:10pt;font-weight:bold">Nom, Prénom</div>'
+    +'<div style="margin-top:20px;border-bottom:1.5px solid #1a1a2e;width:180px"></div>'
+
+    +'</div>'
+    + buildPdfFooter(today2)
+    +'</body></html>';
+
+  var win = window.open('','_blank','width=870,height=1080');
+  if(win){ win.document.write(H); win.document.close(); win.focus(); setTimeout(function(){win.print();},700); }
+  toast('Document d\'entrée en relation vierge ouvert ✓','success');
+}
+
 
 function pcGenPDF(section){
   var c = CID ? gc(CID) : null;
