@@ -1325,11 +1325,40 @@ function rdClients(f='',kf=null){
       onmouseenter="this.style.borderColor='var(--gold2)';this.style.boxShadow='0 2px 8px rgba(13,31,60,.06)'" onmouseleave="this.style.borderColor='var(--bdr)';this.style.boxShadow='none'">
       <div style="width:32px;height:32px;border-radius:50%;background:var(--navy2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold2);font-weight:500;flex-shrink:0">${ini(c)}</div>
       <div style="flex:1"><div style="font-size:12.5px;font-weight:500;color:var(--navy)">${c.prenom} ${c.nom}</div><div style="font-size:11px;color:var(--muted);margin-top:1px">${c.email} · ${c.tel}</div></div>
-      <div style="text-align:right;margin-right:.5rem"><div style="font-size:12.5px;font-weight:500;color:var(--navy)">${(c.aum/1000).toFixed(0)} K€</div><div style="font-size:10px;color:var(--green)">+${c.ytd}% YTD</div></div>
-      <div style="text-align:right;margin-right:.5rem"><div style="font-size:11px;color:var(--muted)">Profil ${c.risk}/7</div><div style="font-size:10px;color:var(--muted2)">${RL[c.risk]}</div></div>
+      <div style="text-align:right;margin-right:.5rem">
+        <div style="font-size:12.5px;font-weight:600;color:var(--navy)">\${ptfVal(c)}</div>
+        <div style="font-size:10px;color:\${ptfPerfColor(c)}">\${ptfPerfLabel(c)}</div>
+      </div>
+      <div style="text-align:right;margin-right:.5rem">
+        <div style="font-size:11px;font-weight:500;color:var(--navy)">\${c.profil||RL[c.risk]||('Profil '+c.risk+'/7')}</div>
+        <div style="font-size:10px;color:var(--muted2)">Invest. orig. : \${ptfOrig(c)}</div>
+      </div>
       <span class="b ${st==='complet'?'bg':st==='en_cours'?'bo':'br'}">${st==='complet'?'KYC Complet':st==='en_cours'?'KYC En cours':'KYC Incomplet'}</span>
     </div>`}).join('');
 }
+function ptfVal(c){
+  var val = c.patrimoine&&c.patrimoine.valeur ? c.patrimoine.valeur : c.aum;
+  if(!val) return '— €';
+  return Number(val).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+}
+function ptfPerfColor(c){
+  var p = c.patrimoine&&c.patrimoine.perfYTD!=null ? c.patrimoine.perfYTD : c.ytd;
+  return p>=0 ? 'var(--green)' : 'var(--red)';
+}
+function ptfPerfLabel(c){
+  var p = c.patrimoine&&c.patrimoine.perfYTD!=null ? c.patrimoine.perfYTD : c.ytd;
+  if(p==null||isNaN(p)) return '— YTD';
+  return (p>=0?'+':'')+p+'% YTD';
+}
+function ptfOrig(c){
+  var hist = c.patrimoine&&c.patrimoine.historique;
+  if(hist&&hist.length){
+    var v = hist[0].valeur;
+    return Number(v).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+  }
+  return '—';
+}
+
 function filterC(v,kf){
   const s=v!==undefined?v:(document.getElementById('csrch')?.value||'');
   rdClients(s,kf===undefined?null:kf);
@@ -1343,7 +1372,17 @@ const TAB_IDS = ['tp-parcours','tp-lcbft_c','tp-patrimoine_c','tp-docs_c','tp-hi
 function rdDetail(){
   const c=gc(CID); if(!c) return;
   document.getElementById('cd-nm').textContent=c.prenom+' '+c.nom;
-  document.getElementById('cd-mt').textContent=`${RL[c.risk]} (${c.risk}/7) · ${(c.aum/1000).toFixed(0)} K€ AUM · ${c.email}`;
+  // Infos header fiche
+  var profil = c.profil||RL[c.risk]||('Profil '+c.risk+'/7');
+  var valeur = ptfVal(c);
+  var perf   = ptfPerfLabel(c);
+  var orig   = ptfOrig(c);
+  document.getElementById('cd-mt').innerHTML =
+    '<span style="color:var(--gold2);font-weight:600">'+escH(profil)+'</span>'
+    +' &nbsp;·&nbsp; '+escH(valeur)
+    +' &nbsp;·&nbsp; <span style="color:'+(c.patrimoine&&c.patrimoine.perfYTD>=0?'var(--green)':'var(--red)')+'">'+escH(perf)+'</span>'
+    +' &nbsp;·&nbsp; Investi : '+escH(orig)
+    +' &nbsp;·&nbsp; '+escH(c.email);
   // Reset onglets — UNIQUEMENT ceux de la fiche client
   document.querySelectorAll('#cd-tabs .tb').forEach((b,i)=>{ b.classList.remove('on'); if(i===0) b.classList.add('on'); });
   TAB_IDS.forEach((id,i)=>{ const el=document.getElementById(id); if(el){ el.classList.remove('on'); if(i===0) el.classList.add('on'); }});
@@ -2810,7 +2849,17 @@ function saveIdentiteCRM(clientId){
   const c=gc(clientId);
   if(c){
     document.getElementById('cd-nm').textContent=c.prenom+' '+c.nom;
-    document.getElementById('cd-mt').textContent=`${RL[c.risk]} (${c.risk}/7) · ${(c.aum/1000).toFixed(0)} K€ AUM · ${c.email}`;
+    // Infos header fiche
+  var profil = c.profil||RL[c.risk]||('Profil '+c.risk+'/7');
+  var valeur = ptfVal(c);
+  var perf   = ptfPerfLabel(c);
+  var orig   = ptfOrig(c);
+  document.getElementById('cd-mt').innerHTML =
+    '<span style="color:var(--gold2);font-weight:600">'+escH(profil)+'</span>'
+    +' &nbsp;·&nbsp; '+escH(valeur)
+    +' &nbsp;·&nbsp; <span style="color:'+(c.patrimoine&&c.patrimoine.perfYTD>=0?'var(--green)':'var(--red)')+'">'+escH(perf)+'</span>'
+    +' &nbsp;·&nbsp; Investi : '+escH(orig)
+    +' &nbsp;·&nbsp; '+escH(c.email);
   }
   rdDash();
 }
