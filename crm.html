@@ -336,6 +336,12 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
     <div class="nav-i" id="ni-clients" onclick="go('clients',this)"><span class="nav-ico">👥</span><span class="nav-lbl2">Liste clients</span></div>
     <div class="nav-i" id="ni-parcours-cif" onclick="go('parcours-cif',this)"><span class="nav-ico">📋</span><span class="nav-lbl2">Questionnaire connaissance</span></div>
     <div class="nav-i" id="ni-parcours-client" onclick="go('parcours-client',this)"><span class="nav-ico">🗂️</span><span class="nav-lbl2">Parcours client</span></div>
+    <div class="ndiv"></div>
+    <div class="nav-lbl">Parcours clients</div>
+    <div class="nav-i" id="ni-pc-entree" onclick="go('pc-entree',this)"><span class="nav-ico">📝</span><span class="nav-lbl2">Entrée en relation</span></div>
+    <div class="nav-i" id="ni-pc-objectifs" onclick="go('pc-objectifs',this)"><span class="nav-ico">🎯</span><span class="nav-lbl2">Questionnaire objectifs</span></div>
+    <div class="nav-i" id="ni-pc-connaissance" onclick="go('pc-connaissance',this)"><span class="nav-ico">📊</span><span class="nav-lbl2">Connaissance & compétence</span></div>
+    <div class="nav-i" id="ni-pc-adequation" onclick="go('pc-adequation',this)"><span class="nav-ico">✅</span><span class="nav-lbl2">Déclaration d'adéquation</span></div>
     <div class="nav-i" id="ni-kyc" onclick="go('kyc',this)"><span class="nav-ico">📊</span><span class="nav-lbl2">Tableau KYC</span><span class="nbadge g" id="nb-kyc">0</span></div>
     <div class="nav-i" id="ni-lcbft" onclick="go('lcbft',this)"><span class="nav-ico">⚖️</span><span class="nav-lbl2">LCB-FT</span></div>
     <div class="nav-i" id="ni-messagerie" onclick="go('messagerie',this)"><span class="nav-ico">💬</span><span class="nav-lbl2">Messagerie</span><span class="nbadge" id="nb-msg" style="display:none">!</span></div>
@@ -577,6 +583,48 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
     <div class="ps">Connaissance & Compétence · Évaluation du risque · Profil AMF</div>
   </div>
   <div id="cif-parcours-wrap"></div>
+</div>
+
+
+<!-- ━━━ PARCOURS CLIENTS ━━━ -->
+<div class="pg" id="pg-pc-entree">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div class="pt">Entrée en relation</div><div class="ps" id="pc-entree-client">Document CIF — Informations sur l'intermédiaire</div></div>
+      <button class="btn bp2 bsm" onclick="pcGenPDF('entree')">⬇ Télécharger PDF</button>
+    </div>
+  </div>
+  <div id="pc-entree-wrap"></div>
+</div>
+
+<div class="pg" id="pg-pc-objectifs">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div class="pt">Questionnaire objectifs</div><div class="ps" id="pc-obj-client">Objectifs de placement — Situation financière — Patrimoine</div></div>
+      <button class="btn bp2 bsm" onclick="pcGenPDF('objectifs')">⬇ Télécharger PDF</button>
+    </div>
+  </div>
+  <div id="pc-objectifs-wrap"></div>
+</div>
+
+<div class="pg" id="pg-pc-connaissance">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div class="pt">Connaissance & compétence</div><div class="ps" id="pc-conn-client">Évaluation AMF — Profil de risque</div></div>
+      <button class="btn bp2 bsm" onclick="pcGenPDF('connaissance')">⬇ Télécharger PDF</button>
+    </div>
+  </div>
+  <div id="pc-connaissance-wrap"></div>
+</div>
+
+<div class="pg" id="pg-pc-adequation">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div><div class="pt">Déclaration d'adéquation</div><div class="ps" id="pc-adeq-client">Synthèse du profil — Recommandation</div></div>
+      <button class="btn bp2 bsm" onclick="pcGenPDF('adequation')">⬇ Télécharger PDF</button>
+    </div>
+  </div>
+  <div id="pc-adequation-wrap"></div>
 </div>
 
 <!-- ━━━ LCB-FT ━━━ -->
@@ -1208,6 +1256,10 @@ function go(pg,el){
     import:()=>rdImport(),
     alerts:()=>rdAlerts(),
     settings:()=>{ loadSettings(); },
+    'pc-entree':()=>pcLoad('entree'),
+    'pc-objectifs':()=>pcLoad('objectifs'),
+    'pc-connaissance':()=>pcLoad('connaissance'),
+    'pc-adequation':()=>pcLoad('adequation'),
   }[pg]||(() => {}))();
 }
 
@@ -3912,186 +3964,270 @@ function generateReportingPDF(){
 // ═══════════════════════════════════════════════════════
 
 function _makePDF(title, clientName, htmlSections) {
-  if (typeof jspdf === 'undefined') {
-    toast('Chargement jsPDF... réessayez dans 2s', '');
-    return;
-  }
-  var doc = new jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  var pageW = doc.internal.pageSize.getWidth();
-  var pageH = doc.internal.pageSize.getHeight();
-  var margin = 14;
-  var colW = pageW - margin * 2;
-  var y = margin;
-  var today = new Date().toLocaleDateString('fr-FR');
+  if (typeof jspdf === 'undefined') { toast('jsPDF non chargé','error'); return; }
 
-  // Palette banque privée
-  var NAVY   = [10, 22, 40];
-  var NAVY2  = [26, 48, 80];
-  var GOLD   = [201, 168, 76];
-  var GOLD2  = [232, 201, 106];
-  var WHITE  = [255, 255, 255];
-  var BLACK  = [26, 26, 46];
-  var MUTED  = [90, 106, 122];
-  var LIGHT  = [240, 242, 248];
-  var STRIPE = [248, 249, 252];
+  var doc = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var pageW = 210, pageH = 297, M = 16, colW = pageW - M*2;
+  var today = new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  var y = 0;
 
-  function checkPage(needed) {
-    if (y + needed > pageH - 20) {
-      doc.addPage();
-      y = margin;
-      drawHeader();
-    }
+  // Palette
+  var NAVY=[10,22,40], NAVY2=[26,48,80], GOLD=[201,168,76], GOLD2=[232,201,106];
+  var WHITE=[255,255,255], BLACK=[26,26,46], MUTED=[90,106,122], LIGHT=[240,242,248], STRIPE=[248,249,252];
+
+  function checkPage(n){
+    if(y+n > pageH-18){ doc.addPage(); drawHeader(); }
   }
 
-  function drawHeader() {
-    // Fond navy plein
-    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-    doc.rect(0, 0, pageW, 22, 'F');
+  function drawHeader(){
+    // En-tête navy
+    doc.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+    doc.rect(0,0,pageW,22,'F');
     // Barre dorée
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.rect(0, 22, pageW, 1.5, 'F');
+    doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.rect(0,22,pageW,1.5,'F');
     // Logo CF
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.roundedRect(margin, 4, 14, 14, 2, 2, 'F');
-    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-    doc.setFontSize(7);
-    doc.setFont('helvetica','bold');
-    doc.text('CF', margin + 4.5, 12.5);
+    doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.roundedRect(M,4,14,14,2,2,'F');
+    doc.setTextColor(WHITE[0],WHITE[1],WHITE[2]);
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text('CF', M+4.5, 12.5);
     // Nom société
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setFontSize(11);
-    doc.setFont('helvetica','bold');
-    doc.text('CAREMMA FINANCE', margin + 18, 10);
-    doc.setTextColor(200, 200, 200);
-    doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
-    doc.text('Conseil en Investissement  \u2022  ORIAS N\u00b024007767  \u2022  Bezons', margin + 18, 17);
-    // Info client + date à droite
-    doc.setTextColor(200, 200, 200);
-    doc.setFontSize(7.5);
-    doc.text(clientName + '  \u2022  ' + today, pageW - margin, 11, {align:'right'});
+    doc.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.setFontSize(11); doc.setFont('helvetica','bold');
+    doc.text('CAREMMA FINANCE', M+18, 10);
+    doc.setTextColor(200,200,200);
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text('Conseil en Investissement \u2022 ORIAS N\u00b024007767 \u2022 Bezons', M+18, 16);
+    // Titre doc + client à droite
+    doc.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(title||'Document', pageW-M, 9, {align:'right'});
+    doc.setTextColor(200,200,200);
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+    doc.text(clientName+' \u2022 '+today, pageW-M, 16, {align:'right'});
     y = 30;
   }
 
-  function drawSectionTitle(text) {
+  function drawSectionTitle(text){
     checkPage(14);
-    // Fond navy2
-    doc.setFillColor(NAVY2[0], NAVY2[1], NAVY2[2]);
-    doc.rect(margin, y, colW, 10, 'F');
-    // Bordure gauche dorée
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.rect(margin, y, 2.5, 10, 'F');
-    // Texte
-    doc.setTextColor(GOLD2[0], GOLD2[1], GOLD2[2]);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica','bold');
-    doc.text((text||'').toUpperCase(), margin + 6, y + 6.5);
-    y += 13;
+    doc.setFillColor(NAVY2[0],NAVY2[1],NAVY2[2]);
+    doc.rect(M, y, colW, 9, 'F');
+    doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.rect(M, y, 2.5, 9, 'F');
+    doc.setTextColor(GOLD2[0],GOLD2[1],GOLD2[2]);
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text((text||'').toUpperCase(), M+6, y+6);
+    y += 12;
   }
 
-  function drawRow(label, value, evenRow) {
-    checkPage(8);
-    if (evenRow) {
-      doc.setFillColor(STRIPE[0], STRIPE[1], STRIPE[2]);
-      doc.rect(margin, y - 1, colW, 8, 'F');
+  // Grille 2 colonnes (comme le PDF cible)
+  // Chaque cellule : label petit gris italic + valeur noir bold en dessous
+  var _gridBuffer = [];
+
+  function flushGrid(){
+    if(!_gridBuffer.length) return;
+    var half = colW/2 - 2;
+    for(var i=0; i<_gridBuffer.length; i+=2){
+      var left  = _gridBuffer[i];
+      var right = _gridBuffer[i+1];
+      var rowH  = 12;
+      checkPage(rowH+2);
+      // Fond alterné
+      if(Math.floor(i/2)%2===1){
+        doc.setFillColor(STRIPE[0],STRIPE[1],STRIPE[2]);
+        doc.rect(M, y-1, colW, rowH+2, 'F');
+      }
+      // Gauche
+      if(left){
+        doc.setFontSize(7); doc.setFont('helvetica','italic');
+        doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+        doc.text((left.label||'').toUpperCase(), M+3, y+4);
+        doc.setFontSize(9); doc.setFont('helvetica','bold');
+        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        var lv = doc.splitTextToSize(String(left.value||'\u2014'), half-4);
+        doc.text(lv, M+3, y+9);
+      }
+      // Droite
+      if(right){
+        doc.setFontSize(7); doc.setFont('helvetica','italic');
+        doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+        doc.text((right.label||'').toUpperCase(), M+colW/2+3, y+4);
+        doc.setFontSize(9); doc.setFont('helvetica','bold');
+        doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+        var rv = doc.splitTextToSize(String(right.value||'\u2014'), half-4);
+        doc.text(rv, M+colW/2+3, y+9);
+      }
+      // Séparateur
+      doc.setDrawColor(LIGHT[0],LIGHT[1],LIGHT[2]);
+      doc.setLineWidth(0.2);
+      doc.line(M, y+rowH+1, M+colW, y+rowH+1);
+      y += rowH+2;
     }
-    // Label
-    doc.setFontSize(7);
-    doc.setFont('helvetica','bold');
-    doc.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    doc.text((label||'').toUpperCase(), margin + 3, y + 3);
-    // Valeur
-    doc.setFont('helvetica','normal');
-    doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-    doc.setFontSize(8.5);
-    var val = String(value||'—');
-    var maxW = colW - 65;
-    var lines2 = doc.splitTextToSize(val, maxW);
-    doc.text(lines2, margin + 55, y + 3);
-    var h = Math.max(8, lines2.length * 4.5 + 2);
-    // Séparateur
-    doc.setDrawColor(LIGHT[0], LIGHT[1], LIGHT[2]);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y + h - 1, pageW - margin, y + h - 1);
-    y += h;
+    _gridBuffer = [];
   }
 
-  // ── PREMIÈRE PAGE ──
+  // Ligne pleine largeur (1 colonne)
+  function drawFullRow(label, value, idx2){
+    flushGrid();
+    checkPage(12);
+    if(idx2%2===1){
+      doc.setFillColor(STRIPE[0],STRIPE[1],STRIPE[2]);
+      doc.rect(M, y-1, colW, 13, 'F');
+    }
+    doc.setFontSize(7); doc.setFont('helvetica','italic');
+    doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+    doc.text((label||'').toUpperCase(), M+3, y+4);
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    var vlines = doc.splitTextToSize(String(value||'\u2014'), colW-6);
+    checkPage(vlines.length*4.5+8);
+    doc.text(vlines, M+3, y+9);
+    doc.setDrawColor(LIGHT[0],LIGHT[1],LIGHT[2]);
+    doc.setLineWidth(0.2);
+    doc.line(M, y+12, M+colW, y+12);
+    y += vlines.length*4.5+8;
+  }
+
+  // Checkbox row
+  function drawCheckRow(label, checked){
+    flushGrid();
+    checkPage(8);
+    var chkC = checked ? GOLD : MUTED;
+    doc.setDrawColor(chkC[0],chkC[1],chkC[2]); doc.setLineWidth(0.5);
+    doc.roundedRect(M+2, y-3, 4, 4, 0.5, 0.5);
+    if(checked){
+      doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+      doc.roundedRect(M+2.4, y-2.6, 3.2, 3.2, 0.3, 0.3, 'F');
+      doc.setTextColor(WHITE[0],WHITE[1],WHITE[2]); doc.setFontSize(6); doc.setFont('helvetica','bold');
+      doc.text('\u2713', M+3, y+0.2);
+    }
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    var cl = doc.splitTextToSize(label||'', colW-10);
+    checkPage(cl.length*5+3);
+    doc.text(cl, M+9, y);
+    y += cl.length*5+2;
+  }
+
+  // Score box (comme le PDF cible - bloc navy)
+  function drawScoreBox(label, value, sub){
+    flushGrid();
+    checkPage(24);
+    var bw = colW/3 - 4;
+    // Appelé 3 fois en succession → gérer via index externe
+    doc.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+    doc.roundedRect(M+_scoreIdx*(bw+6), y, bw, 20, 3, 3, 'F');
+    doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text((label||'').toUpperCase(), M+_scoreIdx*(bw+6)+3, y+5);
+    doc.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.setFontSize(16); doc.setFont('helvetica','bold');
+    doc.text(String(value||'\u2014'), M+_scoreIdx*(bw+6)+3, y+14);
+    doc.setTextColor(WHITE[0],WHITE[1],WHITE[2]);
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    var sl = doc.splitTextToSize(sub||'', bw-4);
+    doc.text(sl, M+_scoreIdx*(bw+6)+3, y+19);
+    _scoreIdx++;
+    if(_scoreIdx>=3){ y+=24; _scoreIdx=0; }
+  }
+
+  // Bloc signature
+  function drawSigBlock(nom, email, date){
+    flushGrid();
+    checkPage(40);
+    doc.setFillColor(248,246,241);
+    doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(M, y, colW, 36, 3, 3);
+    doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+    doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+    var txt = doc.splitTextToSize('Je soussigné(e) '+nom+' certifie l\'exactitude et l\'exhaustivité des informations fournies dans ce questionnaire, et consens au traitement de ces données par Caremma Finance dans le cadre de la relation de conseil en investissement.',colW-8);
+    doc.text(txt, M+4, y+6);
+    // Cadre signature
+    doc.setDrawColor(MUTED[0],MUTED[1],MUTED[2]); doc.setLineWidth(0.3);
+    doc.rect(M+3, y+14, colW*0.45, 12);
+    doc.setFontSize(7); doc.setFont('helvetica','italic'); doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+    doc.text('Signature électronique manuscrite du client', M+4, y+22);
+    // Infos droite
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+    doc.text(nom||'', M+colW*0.5, y+18);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+    doc.text(email||'', M+colW*0.5, y+23);
+    doc.text('Signé le '+date, M+colW*0.5, y+28);
+    y += 40;
+  }
+
+  var _scoreIdx = 0;
+
+  // ═══ GÉNÉRATION ═══
   drawHeader();
 
-  // Titre principal
-  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.roundedRect(margin, y, colW, 14, 2, 2, 'F');
-  doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-  doc.rect(margin, y + 12, colW, 0.8, 'F');
-  doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-  doc.setFontSize(13);
-  doc.setFont('helvetica','bold');
-  doc.text(title||'Document', margin + 5, y + 9.5);
-  y += 20;
+  // Titre principal (comme dans le PDF cible)
+  doc.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+  doc.roundedRect(M, y, colW, 13, 2, 2, 'F');
+  doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+  doc.rect(M, y+11.5, colW, 1, 'F');
+  doc.setTextColor(WHITE[0],WHITE[1],WHITE[2]);
+  doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text(title||'', M+5, y+8.5);
+  y += 18;
 
   // Sections
-  htmlSections.forEach(function(section) {
-    drawSectionTitle(section.heading||'');
-    var rowIdx = 0;
-    if (section.rows) {
-      section.rows.forEach(function(row) {
-        if (row.label && row.value !== undefined) {
-          drawRow(row.label, row.value, rowIdx % 2 === 1);
-          rowIdx++;
-        } else if (row.text) {
-          checkPage(10);
-          doc.setFontSize(8.5);
-          doc.setFont('helvetica','normal');
-          doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-          var tlines = doc.splitTextToSize(row.text, colW - 4);
-          doc.text(tlines, margin + 2, y + 3);
-          y += tlines.length * 5 + 4;
-        } else if (row.checkbox !== undefined) {
-          checkPage(7);
-          var chkColor = row.checked ? GOLD : MUTED;
-          doc.setDrawColor(chkColor[0], chkColor[1], chkColor[2]);
-          doc.setLineWidth(0.5);
-          doc.roundedRect(margin + 2, y - 3, 4, 4, 0.5, 0.5);
-          if (row.checked) {
-            doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-            doc.roundedRect(margin + 2.5, y - 2.5, 3, 3, 0.3, 0.3, 'F');
-            doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-            doc.setFontSize(6);
-            doc.text('\u2713', margin + 3.2, y);
+  htmlSections.forEach(function(section){
+    if(section.heading) drawSectionTitle(section.heading);
+    _gridBuffer = [];
+    var fullRows = 0;
+
+    if(section.rows){
+      // Détecter si grille 2 col ou pleine largeur
+      // Heuristique: si la valeur est longue > 40 chars → pleine largeur
+      section.rows.forEach(function(row){
+        if(row.label && row.value !== undefined){
+          var val = String(row.value||'');
+          if(val.length > 45 || (row.label||'').length > 30){
+            flushGrid();
+            drawFullRow(row.label, row.value, fullRows++);
+          } else {
+            _gridBuffer.push({label:row.label, value:row.value});
+            if(_gridBuffer.length===2){ flushGrid(); }
           }
-          doc.setFontSize(8.5);
-          doc.setFont('helvetica','normal');
-          doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
-          var cl = doc.splitTextToSize(row.checkbox||'', colW - 10);
-          doc.text(cl, margin + 8, y);
-          y += cl.length * 5 + 2;
-        } else if (row.separator) {
-          y += 3;
-          doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-          doc.setLineWidth(0.3);
-          doc.line(margin, y, pageW - margin, y);
-          y += 4;
+        } else if(row.text){
+          flushGrid();
+          checkPage(10);
+          doc.setFontSize(9); doc.setFont('helvetica','normal');
+          doc.setTextColor(BLACK[0],BLACK[1],BLACK[2]);
+          var tl = doc.splitTextToSize(row.text, colW-4);
+          doc.text(tl, M+2, y+4);
+          y += tl.length*5+4;
+        } else if(row.checkbox !== undefined){
+          drawCheckRow(row.checkbox, row.checked);
+        } else if(row.separator){
+          flushGrid();
+          y+=3; doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.3);
+          doc.line(M,y,M+colW,y); y+=4;
+        } else if(row.score){
+          drawScoreBox(row.scoreLabel, row.scoreVal, row.scoreSub);
+        } else if(row.signature){
+          drawSigBlock(row.sigNom, row.sigEmail, row.sigDate);
         }
       });
+      flushGrid();
     }
     y += 4;
   });
 
-  // Pied de page sur toutes les pages
+  // Pied de page
   var totalPages = doc.internal.getNumberOfPages();
-  for (var p = 1; p <= totalPages; p++) {
+  for(var p=1; p<=totalPages; p++){
     doc.setPage(p);
-    // Bande pied
-    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-    doc.rect(0, pageH - 14, pageW, 14, 'F');
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.rect(0, pageH - 14, pageW, 0.8, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(180, 180, 180);
-    doc.setFont('helvetica','normal');
-    doc.text('Caremma Finance \u2014 CIF \u2014 ORIAS N\u00b024007767 \u2014 Bezons \u2014 Confidentiel', margin, pageH - 7);
-    doc.text('Page ' + p + ' / ' + totalPages, pageW - margin, pageH - 7, {align:'right'});
+    doc.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+    doc.rect(0, pageH-14, pageW, 14, 'F');
+    doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+    doc.rect(0, pageH-14, pageW, 0.8, 'F');
+    doc.setFontSize(6.5); doc.setTextColor(160,160,160); doc.setFont('helvetica','normal');
+    doc.text('Caremma Finance \u2014 CIF \u2014 ORIAS N\u00b024007767 \u2014 Bezons \u2014 Confidentiel', M, pageH-7);
+    doc.text('Page '+p+' / '+totalPages, pageW-M, pageH-7, {align:'right'});
   }
 
   return doc;
@@ -4944,6 +5080,448 @@ function exportAllDocs() {
   }
 }
 
+
+// ═══ PARCOURS CLIENTS ═══
+
+var _pcPS = { entree:'ps1', objectifs:'ps2', connaissance:'ps3', adequation:'ps4' };
+var _pcWrap = { entree:'pc-entree-wrap', objectifs:'pc-objectifs-wrap', connaissance:'pc-connaissance-wrap', adequation:'pc-adequation-wrap' };
+var _pcSub = { entree:'pc-entree-client', objectifs:'pc-obj-client', connaissance:'pc-conn-client', adequation:'pc-adeq-client' };
+
+function pcLoad(section){
+  var c = CID ? gc(CID) : null;
+  var psId = _pcPS[section];
+  var wrapId = _pcWrap[section];
+  var subId = _pcSub[section];
+  
+  if(!psId||!wrapId) return;
+  
+  // Mettre à jour sous-titre
+  var sub = document.getElementById(subId);
+  if(sub && c) sub.textContent = c.prenom+' '+c.nom;
+  
+  var wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  
+  // Décoder le template
+  var decoded = decodeURIComponent(
+    Array.from(atob(_PARCOURS_PDF_B64)).map(function(ch){
+      return '%' + ch.charCodeAt(0).toString(16).padStart(2,'0');
+    }).join('')
+  );
+  
+  var tmp = document.createElement('div');
+  tmp.innerHTML = decoded;
+  var ps = tmp.querySelector('#'+psId);
+  if(!ps){ wrap.innerHTML='<div style="padding:20px;color:var(--muted)">Section non trouvée.</div>'; return; }
+  
+  ps.style.display = 'block';
+  ps.querySelectorAll('[style*="display:none"],[style*="display: none"]').forEach(function(s){ s.style.display='block'; });
+  
+  wrap.innerHTML = ps.outerHTML;
+  
+  // Pré-remplir avec les données client
+  if(c){
+    var fields = {
+      'qo-nom-naiss': c.nom||'', 'qo-prenom': c.prenom||'',
+      'qo-email': c.email||'', 'qo-tel': c.tel||'',
+      'er-nom': c.nom||'', 'er-prenom': c.prenom||'',
+      'er-email': c.email||'',
+      'er-client-nom': (c.prenom||'')+' '+(c.nom||'')
+    };
+    Object.keys(fields).forEach(function(id){
+      var el = wrap.querySelector('#'+id);
+      if(el && fields[id]) el.value = fields[id];
+    });
+    // Charger données sauvegardées
+    var saved = c['pc_'+section]||{};
+    Object.keys(saved).forEach(function(id){
+      var el = wrap.querySelector('#'+id);
+      if(!el) return;
+      if(el.type==='checkbox'||el.type==='radio') el.checked=saved[id];
+      else el.value=saved[id];
+    });
+  }
+  
+  // Auto-save
+  wrap.querySelectorAll('input,select,textarea').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      if(!CID) return;
+      var cc = gc(CID); if(!cc) return;
+      if(!cc['pc_'+section]) cc['pc_'+section]={};
+      if(this.id) cc['pc_'+section][this.id] = (this.type==='checkbox'||this.type==='radio')?this.checked:this.value;
+      saveClientsLocal();
+    });
+  });
+  
+  // Surbrillance radio-opts
+  pcInitRadio(wrap);
+}
+
+function pcInitRadio(container){
+  if(!container) return;
+  // label.radio-opt
+  container.querySelectorAll('label.radio-opt').forEach(function(lbl){
+    lbl.style.cursor='pointer';
+    var inp = lbl.querySelector('input[type=radio]');
+    if(inp&&inp.checked) lbl.classList.add('selected');
+    lbl.addEventListener('click',function(){
+      var i = this.querySelector('input[type=radio]'); if(!i) return;
+      container.querySelectorAll('label.radio-opt input[name="'+i.name+'"]').forEach(function(r){
+        r.closest('label').classList.remove('selected','on');
+      });
+      this.classList.add('selected'); i.checked=true;
+    });
+  });
+  // div.radio-opt
+  container.querySelectorAll('div.radio-opt').forEach(function(div){
+    div.style.cursor='pointer';
+    var inp = div.querySelector('input[type=radio]');
+    if(inp&&inp.checked) div.classList.add('selected');
+    div.addEventListener('click',function(){
+      var i = this.querySelector('input[type=radio]'); if(!i) return;
+      container.querySelectorAll('div.radio-opt input[name="'+i.name+'"]').forEach(function(r){
+        r.closest('div.radio-opt').classList.remove('selected','on');
+      });
+      this.classList.add('selected'); i.checked=true;
+    });
+  });
+}
+
+function pcGenPDF(section){
+  var c = CID ? gc(CID) : null;
+  var clientName = c ? (c.prenom+' '+c.nom) : 'Client';
+  var today = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+
+  if(section==='entree')    return pcGenPDF_entree(c,clientName,today);
+  if(section==='objectifs') return pcGenPDF_section(c,clientName,today,'Questionnaire Objectifs de Placement','pc-objectifs-wrap');
+  if(section==='connaissance') return pcGenPDF_section(c,clientName,today,'Connaissance & Compétence AMF','pc-connaissance-wrap');
+  if(section==='adequation')   return pcGenPDF_section(c,clientName,today,"Déclaration d'Adéquation",'pc-adequation-wrap');
+}
+
+function pcGenPDF_entree(c, clientName, today){
+  var wrap = document.getElementById('pc-entree-wrap');
+  if(!wrap||!wrap.innerHTML.trim()){toast('Ouvrez d\'abord la rubrique','error');return;}
+
+  var today2 = new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+  function v(id){ var e=wrap.querySelector('#'+id); return e?e.value||'':''; }
+  function chk(id){ var e=wrap.querySelector('#'+id); return !!(e&&e.checked); }
+
+  var assureurs = [];
+  wrap.querySelectorAll('[id*="assureur"] input,[id*="assureurs"] input').forEach(function(inp){
+    if(inp.value.trim()) assureurs.push(inp.value.trim());
+  });
+
+  var css = buildPdfCss();
+
+  var body = buildPdfHeader("DOCUMENT D'ENTREE EN RELATION", today2, v('er-client-nom')||clientName);
+
+  // Encadré client
+  body += '<div style="border:1px solid #1a1a2e;padding:7px 12px;margin-bottom:16px;font-family:Georgia,serif;font-size:10pt;font-weight:bold;color:#1a1a2e">Nom, Prénom &nbsp;&nbsp; '+(v('er-client-nom')||clientName)+'</div>';
+
+  // Corps du document — texte exact
+  body += '<div class="body">';
+
+  body += '<p style="margin:0 0 10px;font-size:9.5pt">Chère madame, Cher monsieur,</p>';
+  body += '<p style="margin:0 0 8px;font-size:9.5pt;text-align:justify">Vous êtes entré(ees) en relation avec la société CAREMMA FINANCE dont l\'activité est réglementée et contrôlée et nous vous remercions pour votre confiance.</p>';
+  body += '<p style="margin:0 0 16px;font-size:9.5pt;text-align:justify">La présente fiche comporte les informations légales que cet intermédiaire doit vous communiquer lors de l\'entrée en relation.</p>';
+
+  body += '<div class="sec-title">A. Informations préalables sur l\'intermédiaire</div>';
+  body += '<div style="font-size:9pt;line-height:1.6;margin-bottom:12px">';
+  body += '<p style="margin-bottom:6px;text-align:justify">CAREMMA FINANCE est immatriculé(e) au registre unique des intermédiaires en assurance, banque et finance (ORIAS - 1 rue Jules Lefebvre à Paris 75009) sous le numéro 24007767 (consultable sur le site www.orias.fr) en qualité de courtier d\'assurance.</p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">CAREMMA FINANCE SAS au capital de 500 EUROS, est immatriculé(e) au RCS de Pontoise sous le numéro 933537433 et a son siège social au 112 Rue Rouget de Lisle 95870 à Bezons (téléphone : 0626887500 ; courriel : marc.reverseau@caremmafinance.com)</p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">CAREMMA FINANCE est assuré au titre de sa responsabilité civile professionnelle et est bénéficiaire d\'une garantie financière auprès de la compagnie AIG, contrats n°RD01981091S</p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">La société CAREMMA FINANCE est contrôlé(e) par son Autorité de tutelle : l\'Autorité de Contrôle Prudentiel et de Résolution (ACPR) 4 Place de Budapest – CS 92459 – 75436 PARIS cedex 09.<br>Site internet : http://www.acpr.banque-france.fr/accueil.html</p>';
+  body += '<p style="margin-bottom:6px;font-weight:bold;text-decoration:underline;text-align:justify"><em>La société CAREMMA FINANCE est adhérent(e) à la CNCEF Assurance, association professionnelle.</em></p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">- CAREMMA FINANCE n\'entretient pas de relation significative de nature capitalistique ou commerciale avec une entreprise d\'assurance (participation > à 10 % des droits de vote ou du capital).</p>';
+  body += '</div>';
+
+  body += '<div class="page-break"></div>';
+
+  body += '<div style="border:1px solid #1a1a2e;padding:7px 12px;margin-bottom:16px;font-size:10pt;font-weight:bold;color:#1a1a2e">Nom, Prénom</div>';
+
+  body += '<div class="sec-title">B. Informations préalables relatives à la fourniture du contrat</div>';
+  body += '<div style="font-size:9pt;line-height:1.6;margin-bottom:12px">';
+  body += '<p style="margin-bottom:8px;text-align:justify">CAREMMA FINANCE n\'est pas soumis(e) à une obligation contractuelle de travailler exclusivement avec une ou plusieurs entreprises d\'assurance. Pour ce contrat, CAREMMA FINANCE fonde son analyse sur un nombre restreint de contrats présents sur le marché et les noms des entreprises d\'assurance avec lesquelles elle travaille sont les suivants :</p>';
+  body += '<p style="color:#5a6a7a;margin-bottom:6px;font-style:italic">Lister les assureurs concernés</p>';
+
+  if(assureurs.length){
+    assureurs.forEach(function(a){
+      body += '<div style="border:1px solid #ccc;padding:5px 10px;margin-bottom:4px;min-width:200px;display:inline-block">'+escHtml(a)+'</div><br>';
+    });
+  } else {
+    body += '<div style="border:1px solid #ccc;height:24px;margin-bottom:4px;width:260px"></div><br>';
+    body += '<div style="border:1px solid #ccc;height:24px;margin-bottom:4px;width:260px"></div><br>';
+    body += '<div style="border:1px solid #ccc;height:24px;margin-bottom:16px;width:260px"></div>';
+  }
+
+  body += '<p style="margin-top:10px;margin-bottom:4px;font-weight:bold">Service de recommandation personnalisé</p>';
+  body += '<p style="margin-bottom:8px;text-align:justify">CAREMMA FINANCE est en mesure de fournir, un service de recommandation personnalisée concernant les contrats distribués. Ce service est optionnel et peut être payant.</p>';
+  body += '<p style="margin-bottom:4px;font-weight:bold">Service d\'évaluation périodique <span style="font-weight:normal">(optionnel)</span></p>';
+  body += '<p style="text-align:justify">Pour ce contrat, votre intermédiaire vous propose un service d\'évaluation périodique. Il procédera à une évaluation périodique <em>une fois par an</em> de l\'adéquation du produit d\'investissement recommandé, cette évaluation comportera une déclaration d\'adéquation mise à jour sur la manière dont l\'investissement initialement préconisé continue de répondre aux préférences, aux objectifs et aux autres caractéristiques du client. Ce service est optionnel et payant.</p>';
+  body += '</div>';
+
+  body += '<div class="page-break"></div>';
+  body += '<div style="border:1px solid #1a1a2e;padding:7px 12px;margin-bottom:16px;font-size:10pt;font-weight:bold;color:#1a1a2e">Nom, Prénom</div>';
+
+  body += '<div class="sec-title">RÉMUNÉRATION</div>';
+  body += '<div style="font-size:9pt;line-height:1.6;margin-bottom:10px">';
+  body += '<p style="margin-bottom:10px;text-align:justify">Pour ce contrat, la société CAREMMA FINANCE sera rémunérée sur la base :</p>';
+
+  function checkRow(checked, text){
+    return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">'
+      +'<div style="width:14px;height:14px;border:1.5px solid '+(checked?'#c9a84c':'#888')+';flex-shrink:0;margin-top:1px;background:'+(checked?'#c9a84c':'white')+'">'+
+      (checked?'<span style="color:white;font-size:9pt;line-height:14px;display:block;text-align:center">&#10003;</span>':'')
+      +'</div>'
+      +'<span style="text-align:justify">'+text+'</span></div>';
+  }
+
+  body += checkRow(chk('er-rem-honoraire'), 'D\'un honoraire de conseil (rémunération payée directement par le souscripteur ou adhérent). Le montant des honoraires sera de ….. euros ou sera calculé de la façon suivante <span style="border-bottom:1px solid #333;display:inline-block;width:80px">&nbsp;</span> des encours supervisés à chaque fin de trimestre.');
+  body += checkRow(chk('er-rem-commission'), 'D\'une commission (rémunération incluse dans la prime d\'assurance) de <span style="border:1px solid #ccc;display:inline-block;width:80px;height:16px;vertical-align:middle"></span>');
+  body += checkRow(chk('er-rem-gestion'), 'De <span style="border:1px solid #ccc;display:inline-block;width:60px;height:16px;vertical-align:middle"></span> des frais de gestion financière reversés par AURIS GESTION pour la mise en place de l\'allocation des contrats.');
+  body += checkRow(chk('er-rem-combinee'), 'D\'une combinaison des types de rémunération mentionnés ci-dessus, dont des honoraires d\'un montant de <span style="border:1px solid #ccc;display:inline-block;width:80px;height:16px;vertical-align:middle"></span> des encours supervisés ou calculés de la façon suivante (1/4 calculé à chaque fin de trimestre sur le montant des encours constatés à date) et préciser tout autre type de rémunération <span style="border:1px solid #ccc;display:inline-block;width:100px;height:16px;vertical-align:middle"></span>');
+
+  body += '<p style="margin-top:8px">Le service de recommandation personnalisée est rémunéré comme suit <span style="border:1px solid #ccc;display:inline-block;width:120px;height:16px;vertical-align:middle"></span></p>';
+  body += '<p style="margin-top:6px">Le service d\'évaluation périodique est rémunéré comme suit</p>';
+
+  body += '<div style="margin-top:20px"><p>Fait à <span style="border-bottom:1px solid #333;display:inline-block;min-width:80px">&nbsp;'+(v('er-lieu'))+'</span>, le <span style="border-bottom:1px solid #333;display:inline-block;min-width:60px">&nbsp;'+(v('er-date'))+'</span></p></div>';
+  body += '<p style="margin-top:12px">Signature du client précédée de la mention lu et approuvé</p>';
+  body += '<div style="border:1px solid #888;height:50px;width:55%;margin-top:6px"></div>';
+  body += '</div>';
+
+  body += '<div class="page-break"></div>';
+  body += '<div style="border:1px solid #1a1a2e;padding:7px 12px;margin-bottom:16px;font-size:10pt;font-weight:bold;color:#1a1a2e">Nom, Prénom</div>';
+
+  body += '<div class="sec-title" style="text-align:center;font-size:9pt">INFORMATIONS SUR LA PROCEDURE DE RECLAMATION ET LE RECOURS AU PROCESSUS DE MÉDIATION</div>';
+  body += '<div style="font-size:9pt;line-height:1.6">';
+  body += '<p style="font-weight:bold;margin-bottom:4px">Saisine du service interne de réclamation :</p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">En cas de mécontentement vous pouvez formuler une réclamation écrite auprès de notre service interne de réclamation.</p>';
+  body += '<p style="margin-bottom:2px">Le service réclamation peut être contacté selon les modalités suivantes :</p>';
+  body += '<p>- Par courrier : Service réclamation, adresse de l\'entreprise</p>';
+  body += '<p>- Par mail : marc.reverseau@caremmafinance.com</p>';
+  body += '<p style="margin-bottom:8px">Personne à contacter en charge du suivi des réclamations : Marc REVERSEAU</p>';
+  body += '<p style="margin-bottom:8px;text-align:justify">Pour les clients consommateurs, le médiateur de la consommation peut en tout état de cause être saisi deux mois après l\'envoi d\'une première réclamation écrite, quel que soit l\'interlocuteur ou le service auprès duquel elle a été formulée et qu\'il y ait été ou non répondu.</p>';
+  body += '<p style="font-weight:bold;margin-bottom:4px">Saisine du médiateur de la consommation :</p>';
+  body += '<p style="margin-bottom:6px;text-align:justify">Si le client consommateur n\'est pas satisfait de la réponse apportée à sa réclamation, il peut saisir gratuitement le médiateur de la consommation.</p>';
+  body += '<p style="margin-bottom:8px">Le Médiateur de la consommation compétent est :</p>';
+  body += '<div style="text-align:center;color:#cc0000;font-weight:bold;margin-bottom:10px"><p>CNP Mediation- Consommation</p><p>27 Avenue de la Libération</p><p>42400 SAINT CHAMOND</p></div>';
+  body += '<p style="margin-bottom:6px;text-align:justify">Le consommateur doit saisir le Nom du médiateur soit en utilisant le formulaire en ligne (lien vers le formulaire en ligne), soit par courrier électronique (adresse mail du médiateur), soit par courrier postal (Adresse postale du médiateur).</p>';
+  body += '<p style="margin-bottom:10px;text-align:justify">Cette saisine ne peut intervenir qu\'après épuisement des voies de recours internes et doit préciser l\'objet du litige et être accompagnée des pièces justificatives.</p>';
+  body += '<p style="margin-bottom:8px">Je soussigné(e) <span style="border-bottom:1px solid #333;display:inline-block;min-width:120px">&nbsp;'+(v('er-sig-nom')||clientName)+'</span> atteste avoir reçu, pris connaissance et compris les informations données dans le cadre du présent document.</p>';
+  body += '<p style="margin-bottom:6px">Etabli en deux exemplaires, dont un remis au client</p>';
+  body += '<p>Fait à <span style="border-bottom:1px solid #333;display:inline-block;min-width:80px">&nbsp;'+(v('er-lieu'))+'</span>, le <span style="border-bottom:1px solid #333;display:inline-block;min-width:60px">&nbsp;'+(v('er-date'))+'</span></p>';
+  body += '<p style="margin-top:12px">Signature du client précédée de la mention lu et approuvé</p>';
+  body += '<div style="border:1px solid #888;height:50px;width:55%;margin-top:6px"></div>';
+  body += '</div>';
+
+  body += '</div>'; // fin .body
+  body += buildPdfFooter(today2);
+
+  var H = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document Entrée en Relation</title>'
+    +'<style>'+css
+    +'.page-break{page-break-after:always;break-after:page}'
+    +'</style></head><body>'+body+'</body></html>';
+
+  var win = window.open('','_blank','width=870,height=1080');
+  if(win){ win.document.write(H); win.document.close(); win.focus(); setTimeout(function(){win.print();},600); }
+  toast('Document d\'entrée en relation ouvert ✓','success');
+}
+
+// Helpers communs pour tous les PDFs HTML
+function buildPdfCss(){
+  return '@media print{@page{margin:1.5cm;size:A4}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Georgia,serif;color:#1a1a2e;font-size:9.5pt;background:white;line-height:1.4}'
+    +'.hdr{background:#0f1e35;padding:18px 26px;display:flex;justify-content:space-between;align-items:center}'
+    +'.brand{font-size:15pt;font-weight:bold;color:#c9a84c;letter-spacing:.5px}'
+    +'.brand-sub{font-size:8pt;color:rgba(255,255,255,.5);margin-top:2px}'
+    +'.doc-title{font-size:11pt;font-weight:bold;color:#c9a84c;text-align:right}'
+    +'.doc-info{font-size:8pt;color:rgba(255,255,255,.5);text-align:right;margin-top:2px}'
+    +'.gold-bar{height:3px;background:linear-gradient(90deg,#c9a84c,#e8c96a,#c9a84c)}'
+    +'.body{padding:16px 26px}'
+    +'.sec-title{font-size:9pt;font-weight:bold;color:white;background:#0f1e35;padding:5px 10px;border-left:3px solid #c9a84c;margin:10px 0 8px;text-transform:uppercase;letter-spacing:.5px}'
+    +'.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e0e0e0;border-bottom:none}'
+    +'.grid-1{display:grid;grid-template-columns:1fr;border:1px solid #e0e0e0;border-bottom:none}'
+    +'.row{display:flex;flex-direction:column;padding:4px 8px;border-bottom:1px solid #e8e8e8;background:white}'
+    +'.row:nth-child(even){background:#fafafa}'
+    +'.lbl{color:#4a5a6a;font-size:8pt;font-style:italic;margin-bottom:1px}'
+    +'.val{color:#1a1a2e;font-size:9pt;font-weight:bold}'
+    +'.ftr{background:#0f1e35;padding:8px 26px;display:flex;justify-content:space-between;align-items:center}'
+    +'.ftr-t{font-size:7.5pt;color:rgba(255,255,255,.4)}'
+    +'.ftr-brand{font-size:9pt;font-weight:bold;color:#c9a84c}'
+    +'.print-btn{position:fixed;bottom:16px;right:16px;background:#c9a84c;color:#0f1e35;border:none;border-radius:6px;padding:10px 18px;font-size:13px;font-weight:bold;cursor:pointer}';
+}
+
+function buildPdfHeader(docTitle, today2, clientInfo){
+  return '<div class="hdr">'
+    +'<div><div class="brand">CAREMMA FINANCE</div>'
+    +'<div class="brand-sub">Conseil en Investissement \u00b7 ORIAS N\u00b024007767 \u00b7 Bezons</div></div>'
+    +'<div><div class="doc-title">'+escHtml(docTitle)+'</div>'
+    +'<div class="doc-info">'+escHtml(today2)+(clientInfo?'<br>'+escHtml(clientInfo):'')+'</div></div>'
+    +'</div>'
+    +'<div class="gold-bar"></div>';
+}
+
+function buildPdfFooter(today2){
+  return '<div class="ftr">'
+    +'<span class="ftr-t">Document confidentiel \u00b7 Caremma Finance</span>'
+    +'<span class="ftr-brand">CAREMMA FINANCE</span>'
+    +'<span class="ftr-t">ORIAS 24007767 \u00b7 '+escHtml(today2)+'</span>'
+    +'</div>'
+    +'<button class="print-btn no-print" onclick="window.print()">\uD83D\uDDB6 Sauvegarder en PDF</button>';
+}
+
+
+function pcGenPDF_section(c, clientName, today, title, wrapId){
+  var wrap = document.getElementById(wrapId);
+  if(!wrap||!wrap.innerHTML.trim()){toast('Ouvrez d\'abord la rubrique','error');return;}
+
+  var today2 = new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+
+  // Extraire les sections du formulaire
+  var sections = [];
+  var titleEls = wrap.querySelectorAll('.q-title,.card-title,.section-header h2,h2,h3');
+
+  titleEls.forEach(function(titleEl){
+    var secTitle = titleEl.textContent.trim();
+    if(!secTitle||secTitle.length<2) return;
+    var rows = [];
+    var container = titleEl.parentElement;
+    if(!container) return;
+
+    container.querySelectorAll('.form-group,.fg').forEach(function(fg){
+      var lbl = fg.querySelector('label,.fl');
+      var inp = fg.querySelector('input,select,textarea');
+      if(!lbl||!inp) return;
+      var val = getInputVal(inp);
+      if(val&&val!=='—') rows.push({label:lbl.textContent.trim(), value:val});
+    });
+
+    var done = {};
+    container.querySelectorAll('.radio-opt.selected,.radio-opt.on').forEach(function(opt){
+      var inp = opt.querySelector('input[type=radio]');
+      if(!inp||done[inp.name]) return;
+      done[inp.name] = true;
+      var qLabel = getQuestionLabel(opt,container,inp.name);
+      rows.push({label:qLabel, value:opt.textContent.trim().replace(/\s+/g,' '), full:true});
+    });
+
+    container.querySelectorAll('table').forEach(function(table){
+      var headers = table.querySelectorAll('thead th');
+      table.querySelectorAll('tbody tr').forEach(function(tr){
+        var cells = tr.querySelectorAll('td');
+        if(!cells.length) return;
+        var prod = cells[0].textContent.trim(); if(!prod) return;
+        var val = '—';
+        tr.querySelectorAll('input[type=radio]:checked').forEach(function(r){
+          var td = r.closest('td');
+          var idx2 = Array.from(tr.cells).indexOf(td);
+          if(idx2>=0&&headers[idx2]) val = headers[idx2].textContent.trim();
+        });
+        rows.push({label:prod, value:val});
+      });
+    });
+
+    if(rows.length) sections.push({heading:secTitle, rows:rows});
+  });
+
+  if(!sections.length){
+    var fb = {heading:title, rows:[]};
+    wrap.querySelectorAll('input,select,textarea').forEach(function(inp){
+      if(inp.type==='radio'&&!inp.checked) return;
+      if(inp.type==='hidden') return;
+      var fg = inp.closest('.form-group,.fg');
+      var label = ''; if(fg){var l=fg.querySelector('label,.fl');if(l)label=l.textContent.trim();}
+      if(!label) label = inp.placeholder||inp.name||inp.id||''; if(!label) return;
+      var val = getInputVal(inp); if(!val||val==='—') return;
+      fb.rows.push({label:label, value:val});
+    });
+    if(fb.rows.length) sections.push(fb);
+  }
+
+  if(!sections.length){toast('Remplissez le formulaire avant de générer','error');return;}
+
+  // Générer le HTML avec le même style que le portail
+  var H = buildPdfHtml(title, clientName, today2, sections);
+  var win = window.open('','_blank','width=870,height=1080');
+  if(win){
+    win.document.write(H);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); }, 600);
+  }
+  toast('PDF ouvert pour impression ✓','success');
+}
+
+function buildPdfHtml(title, clientName, today2, sections){
+  var css = buildPdfCss();
+  var body = buildPdfHeader(title, today2, clientName);
+  body += '<div class="body">';
+
+  sections.forEach(function(sec){
+    body += '<div class="sec"><div class="sec-title">'+escHtml(sec.heading)+'</div>';
+    var gridRows=[], fullRows=[];
+    (sec.rows||[]).forEach(function(row){
+      if(row.full||(row.label||'').length>35||(String(row.value||'')).length>40){
+        fullRows.push(row);
+      } else {
+        gridRows.push(row);
+      }
+    });
+    if(gridRows.length){
+      body += '<div class="grid">';
+      gridRows.forEach(function(row){
+        body += '<div class="row"><div class="lbl">'+escHtml(row.label)+'</div><div class="val">'+escHtml(String(row.value||'\u2014'))+'</div></div>';
+      });
+      body += '</div>';
+    }
+    if(fullRows.length){
+      body += '<div class="grid-1" style="margin-top:'+(gridRows.length?'4px':'0')+'">';
+      fullRows.forEach(function(row){
+        body += '<div class="row"><div class="lbl">'+escHtml(row.label)+'</div><div class="val">'+escHtml(String(row.value||'\u2014'))+'</div></div>';
+      });
+      body += '</div>';
+    }
+    body += '</div>';
+  });
+
+  body += '</div>';
+  body += buildPdfFooter(today2);
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escHtml(title)+'</title>'
+    +'<style>'+css+'</style></head><body>'+body+'</body></html>';
+}
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+function getInputVal(inp){
+  if(!inp) return '—';
+  if(inp.type==='checkbox') return inp.checked ? '✓ Oui' : '✗ Non';
+  if(inp.type==='radio'){
+    if(!inp.checked) return null;
+    var lbl = inp.closest('label');
+    return lbl ? lbl.textContent.trim() : inp.value;
+  }
+  return inp.value||'—';
+}
+
+function getQuestionLabel(opt, container, name){
+  // Remonter pour trouver le texte de la question
+  var el = opt.parentElement;
+  for(var i=0;i<5;i++){
+    if(!el) break;
+    var p = el.querySelector('p, .q-sub, [class*="question"]');
+    if(p && p.textContent.trim() && !p.classList.contains('radio-opt')){
+      return p.textContent.trim().replace(/\s+/g,' ').slice(0,70);
+    }
+    el = el.parentElement;
+  }
+  return name||'Question';
+}
+
+
 function rdKYC() {
   kycTab('tableau', document.getElementById('ktab-tableau'));
 }
@@ -5011,83 +5589,128 @@ function kycGenProcedurePDF() {
   toast('PDF téléchargé ✓', 'success');
 }
 
-function rdTabSign(c) {
-  var el = document.getElementById('tp-sign_c');
+function rdTabSign(c){
+  var el=document.getElementById('tp-sign_c');
   if(!el) return;
-  var envelopes = c.envelopes || [];
-  var status = c.parcoursStatus || '';
-  var statusLabels = {client_filled:'&#9999; Rempli par le client',sent_for_signature:'&#9997; Envoy&eacute; pour signature',completed:'&#10003; Sign&eacute;'};
 
-  // Construire la liste des enveloppes
-  var envHtml = '';
-  if(envelopes.length) {
-    envelopes.slice().reverse().forEach(function(env){
-      var statusColor = {sent:'var(--blue)',completed:'var(--green)',declined:'var(--red)',voided:'var(--muted)'}[env.status]||'var(--muted)';
-      var statusLabel = {sent:'Envoy&#233; &#9993;',completed:'Sign&#233; &#10003;',declined:'Refus&#233;',voided:'Annul&#233;'}[env.status]||env.status;
-      envHtml += '<div style="padding:10px 0;border-bottom:1px solid var(--bdr)">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">'
-        +'<div style="font-size:12px;font-weight:600;color:var(--navy)">'+(env.date||'&mdash;')+'</div>'
-        +'<span style="font-size:10px;font-weight:700;color:'+statusColor+'">'+statusLabel+'</span></div>'
-        +'<div style="font-size:11px;color:var(--muted)">Envoy&#233; &agrave; : '+(env.email||'&mdash;')+'</div>'
-        +(env.envelopeId ? '<div style="font-size:10px;color:var(--muted2);font-family:monospace">ID: '+env.envelopeId.slice(0,18)+'...</div>' : '')
-        +'</div>';
-    });
-  } else {
-    envHtml = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:11.5px">Aucune enveloppe envoy&eacute;e.</div>';
-  }
+  // Statut actuel
+  var status = c.parcoursStatus||'';
+  var statusLabel = {
+    'client_filled':'📝 Dossier rempli par le client',
+    'sent_for_signature':'⏳ En attente de signature',
+    'completed':'✅ Signé'
+  }[status]||'— Aucun statut';
 
-  var statusHtml = status ? '<div class="card"><div class="sh"><span class="st">Statut parcours</span></div>'
-    +'<div style="font-size:12px;color:var(--navy)">'+(statusLabels[status]||status)+'</div></div>' : '';
+  el.innerHTML = '<div class="card">'
+    +'<div class="sh"><span class="st">Signature électronique — '+c.prenom+' '+c.nom+'</span></div>'
+    +'<div style="padding:16px">'
+    +'<div style="margin-bottom:16px;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;font-size:13px;color:var(--muted)">'
+    +'Statut : <strong style="color:var(--gold2)">'+statusLabel+'</strong></div>'
 
-  var box = document.createElement('div');
-  box.className = 'g2';
-  box.innerHTML =
-    '<div style="display:flex;flex-direction:column;gap:12px">'
-    +'<div class="card">'
-    +'<div class="sh"><span class="st">&#9997; Envoyer pour signature</span></div>'
-    +'<p style="font-size:11.5px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Envoyez les documents du parcours CIF au client pour signature &eacute;lectronique via DocuSign.</p>'
-    +'<div class="fg" style="margin-bottom:.6rem"><label class="fl">Email du signataire</label>'
-    +'<input class="fc" id="sign-email" value="'+(c.email||'')+'"></div>'
-    +'<div class="fg" style="margin-bottom:.6rem"><label class="fl">Nom complet</label>'
-    +'<input class="fc" id="sign-name" value="'+(c.prenom||'')+' '+(c.nom||'')+'"></div>'
-    +'<div class="fg" style="margin-bottom:.6rem"><label class="fl">Access Token DocuSign</label>'
-    +'<input class="fc" id="sign-token" type="password" placeholder="eyJ0eXAiOiJKV1Qi..."></div>'
-    +'<div class="fg" style="margin-bottom:.75rem"><label class="fl">Environnement</label>'
-    +'<select class="fc" id="sign-env"><option value="demo">Demo (demo.docusign.net)</option><option value="prod">Production</option></select></div>'
-    +'<div class="fg" style="margin-bottom:.75rem"><label class="fl">Documents &agrave; inclure</label>'
-    +'<div style="display:flex;flex-direction:column;gap:5px;margin-top:4px">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="sign-doc1" checked> Entr&eacute;e en relation (IDD)</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="sign-doc2" checked> Questionnaire objectifs</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="sign-doc3" checked> Connaissance client AMF</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="sign-doc4" checked> D&eacute;claration ad&eacute;quation</label>'
+    // Documents signés existants
+    +(c.docs&&c.docs.filter(function(d){return d.status==='signed';}).length
+      ?'<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:8px">Documents signés</div>'
+      +c.docs.filter(function(d){return d.status==='signed';}).map(function(d){
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:6px;margin-bottom:6px;font-size:12px">'
+          +'<span style="color:var(--green)">✓</span>'
+          +'<span style="color:var(--text2)">'+escH(d.nom||'Document')+'</span>'
+          +'<span style="color:var(--muted);margin-left:auto">'+escH(d.signatureDate||d.date||'')+'</span></div>';
+      }).join('')+'</div>'
+      :'')
+
+    // Bouton demander signature
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Demander une signature</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    +'<button class="btn bp2 bsm" onclick="crmRequestSign(\''+c.id+'\',\'entree\')">📝 Entrée en relation</button>'
+    +'<button class="btn bp2 bsm" onclick="crmRequestSign(\''+c.id+'\',\'objectifs\')">🎯 Questionnaire objectifs</button>'
+    +'<button class="btn bp2 bsm" onclick="crmRequestSign(\''+c.id+'\',\'connaissance\')">📊 Connaissance</button>'
+    +'<button class="btn bp2 bsm" onclick="crmRequestSign(\''+c.id+'\',\'adequation\')">✅ Adéquation</button>'
+    +'</div>'
+
+    // Signature manuscrite directe (sur rendez-vous)
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Signature en présence (rendez-vous)</div>'
+    +'<div id="crm-sig-wrap-'+c.id+'" style="display:none">'
+    +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Le client peut signer directement sur l\'écran :</p>'
+    +'<canvas id="crm-sig-canvas" style="border:1px solid rgba(201,168,76,0.3);border-radius:8px;background:white;width:100%;height:140px;display:block;cursor:crosshair;touch-action:none;margin-bottom:10px"></canvas>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button class="btn bgh bsm" onclick="crmClearSig()">🗑 Effacer</button>'
+    +'<button class="btn bp2 bsm" onclick="crmConfirmSig(\''+c.id+'\')">✅ Valider la signature</button>'
+    +'<button class="btn bgh bsm" onclick="document.getElementById(\'crm-sig-wrap-'+c.id+'\').style.display=\'none\'">Annuler</button>'
     +'</div></div>'
-    +'<button class="btn bp2 bblk" id="btn-send-sign">&#9997; Envoyer pour signature DocuSign</button>'
-    +'</div>'
-    +'<div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy2));border:none">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--gold2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Obtenir un Access Token</div>'
-    +'<div style="font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.7;margin-bottom:10px">'
-    +'1. Connectez-vous sur developers.docusign.com<br>'
-    +'2. Allez dans Apps &amp; Keys<br>3. Cliquez sur "Generate Access Token"<br>4. Copiez le token (valide 8h)</div>'
-    +'<div style="font-size:10px;color:rgba(255,255,255,.35)">Pour la production, changez l&apos;environnement et utilisez un token de production.</div>'
-    +'</div>'
-    +'</div>'
-    +'<div style="display:flex;flex-direction:column;gap:12px">'
-    +'<div class="card"><div class="sh"><span class="st">&#128203; Enveloppes DocuSign</span>'
-    +'<span style="font-size:10px;color:var(--muted)">'+envelopes.length+' envoi(s)</span></div>'
-    +envHtml+'</div>'
-    +statusHtml
-    +'</div>';
-
-  el.innerHTML = '';
-  el.appendChild(box);
-
-  // Attacher le handler du bouton après injection
-  var sendBtn = document.getElementById('btn-send-sign');
-  if(sendBtn) { (function(cid){ sendBtn.onclick = function(){ sendDocuSignCRM(cid); }; })(c.id); }
+    +'<button class="btn bgh bsm" onclick="crmShowSigCanvas(\''+c.id+'\')">✍️ Ouvrir le pad de signature</button>'
+    +'</div></div>';
 }
 
+function crmShowSigCanvas(clientId){
+  var wrap=document.getElementById('crm-sig-wrap-'+clientId);
+  if(!wrap){return;}
+  wrap.style.display='block';
+  setTimeout(function(){
+    var canvas=document.getElementById('crm-sig-canvas');
+    if(!canvas) return;
+    var rect=canvas.getBoundingClientRect();
+    canvas.width=Math.round(rect.width)||700; canvas.height=140;
+    var ctx=canvas.getContext('2d');
+    ctx.strokeStyle='#0c1a2e'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
+    canvas._ctx=ctx; canvas._drawing=false;
+    canvas.onmousedown=function(e){this._drawing=true;ctx.beginPath();ctx.moveTo(e.offsetX,e.offsetY);};
+    canvas.onmousemove=function(e){if(!this._drawing)return;ctx.lineTo(e.offsetX,e.offsetY);ctx.stroke();};
+    canvas.onmouseup=canvas.onmouseleave=function(){this._drawing=false;};
+    canvas.ontouchstart=function(e){e.preventDefault();this._drawing=true;var t=e.touches[0];var r2=canvas.getBoundingClientRect();ctx.beginPath();ctx.moveTo((t.clientX-r2.left)*(canvas.width/r2.width),(t.clientY-r2.top)*(canvas.height/r2.height));};
+    canvas.ontouchmove=function(e){e.preventDefault();if(!this._drawing)return;var t=e.touches[0];var r2=canvas.getBoundingClientRect();ctx.lineTo((t.clientX-r2.left)*(canvas.width/r2.width),(t.clientY-r2.top)*(canvas.height/r2.height));ctx.stroke();};
+    canvas.ontouchend=function(){this._drawing=false;};
+  },100);
+}
 
-// Envoyer les documents depuis le CRM via DocuSign
+function crmClearSig(){
+  var c=document.getElementById('crm-sig-canvas');
+  if(c&&c._ctx) c._ctx.clearRect(0,0,c.width,c.height);
+}
+
+function crmConfirmSig(clientId){
+  var canvas=document.getElementById('crm-sig-canvas');
+  if(!canvas){toast('Canvas non trouvé','error');return;}
+  var px=canvas._ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  var ok=false; for(var i=3;i<px.length;i+=4) if(px[i]>0){ok=true;break;}
+  if(!ok){toast('Veuillez tracer la signature','error');return;}
+  var sigData=canvas.toDataURL('image/png');
+  var sigDate=new Date().toLocaleString('fr-FR');
+  var doc={id:Date.now()+'_sig',nom:'Signature_'+sigDate.replace(/[/:]/g,'-')+'.png',
+    status:'signed',signature:sigData,signatureDate:sigDate,fromCRM:true,date:today()};
+  uc(clientId,function(x){ return Object.assign({},x,{
+    parcoursStatus:'completed',
+    docs:[...(x.docs||[]),doc]
+  });});
+  saveClientsLocal();
+  toast('Signature enregistrée ✓','success');
+  rdTabSign(gc(clientId));
+}
+
+function crmRequestSign(clientId,docType){
+  var c=gc(clientId); if(!c){toast('Client introuvable','error');return;}
+  var labels={'entree':"Document d'entrée en relation",'objectifs':'Questionnaire objectifs',
+    'connaissance':'Connaissance & compétence','adequation':"Déclaration d'adéquation"};
+  var label=labels[docType]||docType;
+  // Envoyer un message au client via JSONBin
+  var msg={id:Date.now(),from:'advisor',
+    text:'📋 Votre conseiller vous demande de signer votre '+label+'. Rendez-vous dans l\'onglet "Mes documents" de votre espace client.',
+    date:new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}),read:false};
+  jbGetCRM(MSG_BIN).then(function(data){
+    var k=c.email.toLowerCase().replace(/[^a-z0-9]/g,'_');
+    if(!data.messages) data.messages={};
+    if(!data.messages[k]) data.messages[k]={prenom:c.prenom,nom:c.nom,email:c.email,msgs:[],docs:[]};
+    if(!data.messages[k].msgs) data.messages[k].msgs=[];
+    data.messages[k].msgs.push(msg);
+    data.messages[k].signatureRequested=docType;
+    return jbPutCRM(MSG_BIN,data);
+  }).then(function(){
+    uc(clientId,function(x){return Object.assign({},x,{parcoursStatus:'sent_for_signature'});});
+    saveClientsLocal();
+    toast('Demande de signature envoyée à '+c.prenom+' ✓','success');
+    rdTabSign(gc(clientId));
+  }).catch(function(e){toast('Erreur : '+e.message,'error');});
+}
+
 function sendDocuSignCRM(clientId) {
   var c = gc(clientId); if(!c) return;
   var email = (document.getElementById('sign-email')||{}).value||c.email||'';
