@@ -1674,7 +1674,29 @@ async function docUpload(file){
   }
 
   // Ajouter au dossier
-  uc(c.id,x=>({...x,docs:[{nom:file.name,cat,date:today(),size:(file.size/1024).toFixed(0)+' Ko'},...(x.docs||[])]}));
+  // Lire le fichier pour la data + sync portail
+const reader_doc = new FileReader();
+reader_doc.onload = function(ev){
+  const docObj = {
+    id: Date.now()+'_'+Math.random().toString(36).slice(2,5),
+    nom: file.name, cat: cat,
+    date: today(), size: (file.size/1024).toFixed(0)+' Ko',
+    data: ev.target.result
+  };
+  uc(c.id, x=>({...x, docs:[docObj,...(x.docs||[])]}));
+  lsSave();
+  // Sync vers JSONBin (visible dans portail)
+  jbGetCRM(MSG_BIN).then(function(data){
+    const k = eKey(c.email||'');
+    if(!data.messages) data.messages={};
+    if(!data.messages[k]) data.messages[k]={prenom:c.prenom,nom:c.nom,email:c.email,msgs:[],docs:[]};
+    if(!data.messages[k].docs) data.messages[k].docs=[];
+    data.messages[k].docs.push(docObj);
+    return jbPutCRM(MSG_BIN, data);
+  }).then(function(){ toast('Document enregistré et synchronisé ✓','success'); })
+  .catch(function(){ toast('Document enregistré localement ✓','success'); });
+};
+reader_doc.readAsDataURL(file);
   const dl=document.getElementById('doc-list-'+c.id);
   if(dl) dl.innerHTML=rdDocList(gc(c.id));
 
@@ -2116,10 +2138,11 @@ function syncPtfToPortail(c) {
     if(!data.messages[k]) data.messages[k] = {prenom:c.prenom,nom:c.nom,email:c.email,msgs:[],docs:[]};
     if(!data.messages[k].patrimoine) data.messages[k].patrimoine = {};
     data.messages[k].patrimoine = Object.assign(data.messages[k].patrimoine, c.patrimoine||{});
-    // Inclure l historique du graphique pour le portail
-    var histEl = document.getElementById('ptf-history-data');
-    if(c.ptfHistory && c.ptfHistory.length)
+    // Historique - stocker aux deux endroits pour compatibilité portail
+    if(c.ptfHistory && c.ptfHistory.length) {
       data.messages[k].patrimoine.historique = c.ptfHistory;
+      data.messages[k].ptfHistory = c.ptfHistory;
+    }
     // Profil
     var profilEl = document.getElementById('ptf-e-profil');
     if(profilEl && profilEl.value) {
@@ -3416,42 +3439,36 @@ function qNav(n) {
 
 function calcScore() {
   var total = 0;
-  var scope = document.getElementById('cif-parcours-wrap')||document;
+  // Chercher dans ps3 ou ps4 ou tout le document
+  var scope = document.getElementById('ps3') || document.getElementById('ps4') || document;
 
-  // Produits financiers : connaissance (0/2/4) x 13 produits
-  var products = ['act','obl','nco','mon','div','str','aut','ban','imm','av','dom','pee','sci'];
-  products.forEach(function(p){
+  ['act','obl','nco','mon','div','str','aut','ban','imm','av','dom','pee','sci'].forEach(function(p){
     var r = scope.querySelector('input[name="kn-'+p+'"]:checked');
     if(r) total += parseInt(r.value)||0;
   });
 
-  // Gestion passée
   var gp = scope.querySelector('input[name="gestion_passe"]:checked');
   if(gp) total += parseInt(gp.value)||0;
 
-  // Information (4 questions)
   for(var i=1;i<=4;i++){
-    var r=scope.querySelector('input[name="inf'+i+'"]:checked');
+    var r = scope.querySelector('input[name="inf'+i+'"]:checked');
     if(r) total += parseInt(r.value)||0;
   }
 
-  // Affirmations vrai/faux (6 questions, 1pt chacune)
   for(var j=1;j<=6;j++){
-    var r2=scope.querySelector('input[name="aff'+j+'"]:checked');
+    var r2 = scope.querySelector('input[name="aff'+j+'"]:checked');
     if(r2) total += parseInt(r2.value)||0;
   }
 
-  var sv = document.getElementById('q-score-val');
-  if(sv) sv.textContent = total;
+  var cat = total<=125 ? 'Investisseur de Base' : total<=171 ? 'Investisseur Averti' : 'Investisseur Avancé';
 
-  // Barème : 81-125 = Base · 126-171 = Averti · 172-218 = Avancé
-  var pv = document.getElementById('q-profil-val');
-  var rKn = document.getElementById('result-score-kn');
-  var rCat = document.getElementById('result-cat-kn');
-  var cat = total <= 125 ? 'Investisseur de Base' : total <= 171 ? 'Investisseur Averti' : 'Investisseur Avancé';
-  if(pv) pv.textContent = cat;
-  if(rKn)  rKn.textContent  = total;
-  if(rCat) rCat.textContent = cat;
+  ['q-score-val','score-val','result-score-kn'].forEach(function(id){
+    var e = document.getElementById(id); if(e) e.textContent = total;
+  });
+  ['q-profil-val','result-cat-kn'].forEach(function(id){
+    var e = document.getElementById(id); if(e) e.textContent = cat;
+  });
+  console.log('calcScore: total='+total+' scope='+scope.id+' cat='+cat);
 }
 
 function calcEpargne(){}
@@ -3895,30 +3912,31 @@ function generateReportingPDF(){
 // ═══════════════════════════════════════════════════════
 
 function _makePDF(title, clientName, htmlSections) {
-  // htmlSections = tableau de { heading, rows }
-  // rows = tableau de { label, value } ou { html (texte brut) }
   if (typeof jspdf === 'undefined') {
     toast('Chargement jsPDF... réessayez dans 2s', '');
     return;
   }
   var doc = new jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  var pageW = doc.internal.pageSize.getWidth();   // 210
-  var pageH = doc.internal.pageSize.getHeight();  // 297
-  var margin = 15;
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 14;
   var colW = pageW - margin * 2;
   var y = margin;
   var today = new Date().toLocaleDateString('fr-FR');
 
-  // Couleurs
-  var NAVY  = [10, 22, 40];
-  var GOLD  = [201, 168, 76];
-  var GREY  = [90, 106, 122];
-  var BLACK = [26, 26, 46];
-  var WHITE = [255, 255, 255];
-  var LIGHT = [228, 231, 239];
+  // Palette banque privée
+  var NAVY   = [10, 22, 40];
+  var NAVY2  = [26, 48, 80];
+  var GOLD   = [201, 168, 76];
+  var GOLD2  = [232, 201, 106];
+  var WHITE  = [255, 255, 255];
+  var BLACK  = [26, 26, 46];
+  var MUTED  = [90, 106, 122];
+  var LIGHT  = [240, 242, 248];
+  var STRIPE = [248, 249, 252];
 
   function checkPage(needed) {
-    if (y + needed > pageH - margin) {
+    if (y + needed > pageH - 20) {
       doc.addPage();
       y = margin;
       drawHeader();
@@ -3926,127 +3944,159 @@ function _makePDF(title, clientName, htmlSections) {
   }
 
   function drawHeader() {
-    // Bande navy en haut
-    doc.setFillColor.apply(doc, NAVY);
-    doc.rect(0, 0, pageW, 18, 'F');
-    doc.setTextColor.apply(doc, GOLD);
+    // Fond navy plein
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, 0, pageW, 22, 'F');
+    // Barre dorée
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.rect(0, 22, pageW, 1.5, 'F');
+    // Logo CF
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.roundedRect(margin, 4, 14, 14, 2, 2, 'F');
+    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+    doc.setFontSize(7);
+    doc.setFont('helvetica','bold');
+    doc.text('CF', margin + 4.5, 12.5);
+    // Nom société
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
     doc.setFontSize(11);
     doc.setFont('helvetica','bold');
-    doc.text('CAREMMA FINANCE', margin, 11);
+    doc.text('CAREMMA FINANCE', margin + 18, 10);
     doc.setTextColor(200, 200, 200);
     doc.setFontSize(7);
     doc.setFont('helvetica','normal');
-    doc.text('ORIAS n\u00b024007767  \u2022  '+today+'  \u2022  '+clientName, pageW - margin, 11, {align:'right'});
-    // Ligne or
-    doc.setDrawColor.apply(doc, GOLD);
-    doc.setLineWidth(0.5);
-    doc.line(margin, 19, pageW - margin, 19);
-    if (y < 24) y = 24;
+    doc.text('Conseil en Investissement  \u2022  ORIAS N\u00b024007767  \u2022  Bezons', margin + 18, 17);
+    // Info client + date à droite
+    doc.setTextColor(200, 200, 200);
+    doc.setFontSize(7.5);
+    doc.text(clientName + '  \u2022  ' + today, pageW - margin, 11, {align:'right'});
+    y = 30;
   }
 
-  // Première page
+  function drawSectionTitle(text) {
+    checkPage(14);
+    // Fond navy2
+    doc.setFillColor(NAVY2[0], NAVY2[1], NAVY2[2]);
+    doc.rect(margin, y, colW, 10, 'F');
+    // Bordure gauche dorée
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.rect(margin, y, 2.5, 10, 'F');
+    // Texte
+    doc.setTextColor(GOLD2[0], GOLD2[1], GOLD2[2]);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica','bold');
+    doc.text((text||'').toUpperCase(), margin + 6, y + 6.5);
+    y += 13;
+  }
+
+  function drawRow(label, value, evenRow) {
+    checkPage(8);
+    if (evenRow) {
+      doc.setFillColor(STRIPE[0], STRIPE[1], STRIPE[2]);
+      doc.rect(margin, y - 1, colW, 8, 'F');
+    }
+    // Label
+    doc.setFontSize(7);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+    doc.text((label||'').toUpperCase(), margin + 3, y + 3);
+    // Valeur
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+    doc.setFontSize(8.5);
+    var val = String(value||'—');
+    var maxW = colW - 65;
+    var lines2 = doc.splitTextToSize(val, maxW);
+    doc.text(lines2, margin + 55, y + 3);
+    var h = Math.max(8, lines2.length * 4.5 + 2);
+    // Séparateur
+    doc.setDrawColor(LIGHT[0], LIGHT[1], LIGHT[2]);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y + h - 1, pageW - margin, y + h - 1);
+    y += h;
+  }
+
+  // ── PREMIÈRE PAGE ──
   drawHeader();
-  y = 28;
 
   // Titre principal
-  doc.setFillColor.apply(doc, NAVY);
-  doc.roundedRect(margin, y, colW, 12, 2, 2, 'F');
-  doc.setTextColor.apply(doc, WHITE);
+  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.roundedRect(margin, y, colW, 14, 2, 2, 'F');
+  doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+  doc.rect(margin, y + 12, colW, 0.8, 'F');
+  doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
   doc.setFontSize(13);
   doc.setFont('helvetica','bold');
-  doc.text(title, margin + 5, y + 8);
-  y += 18;
+  doc.text(title||'Document', margin + 5, y + 9.5);
+  y += 20;
 
   // Sections
   htmlSections.forEach(function(section) {
-    checkPage(18);
-
-    // Titre de section
-    doc.setFillColor(240, 242, 248);
-    doc.rect(margin, y, colW, 9, 'F');
-    doc.setDrawColor.apply(doc, GOLD);
-    doc.setLineWidth(0.8);
-    doc.line(margin, y, margin, y + 9);
-    doc.setTextColor.apply(doc, NAVY);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text(section.heading || '', margin + 4, y + 6);
-    y += 12;
-
+    drawSectionTitle(section.heading||'');
+    var rowIdx = 0;
     if (section.rows) {
       section.rows.forEach(function(row) {
-        checkPage(8);
         if (row.label && row.value !== undefined) {
-          // Champ label + valeur
-          doc.setFontSize(7.5);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor.apply(doc, GREY);
-          doc.text((row.label || '').toUpperCase(), margin + 2, y);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor.apply(doc, BLACK);
-          doc.setFontSize(9);
-          var val = String(row.value || '—');
-          var lines = doc.splitTextToSize(val, colW - 6);
-          doc.text(lines, margin + 2, y + 4);
-          y += 4 + lines.length * 5;
-          // Ligne séparatrice légère
-          doc.setDrawColor.apply(doc, LIGHT);
-          doc.setLineWidth(0.2);
-          doc.line(margin + 2, y, pageW - margin - 2, y);
-          y += 2;
+          drawRow(row.label, row.value, rowIdx % 2 === 1);
+          rowIdx++;
         } else if (row.text) {
-          // Texte libre
-          doc.setFontSize(9);
+          checkPage(10);
+          doc.setFontSize(8.5);
           doc.setFont('helvetica','normal');
-          doc.setTextColor.apply(doc, BLACK);
-          var lines = doc.splitTextToSize(row.text, colW - 4);
-          checkPage(lines.length * 5 + 4);
-          doc.text(lines, margin + 2, y);
-          y += lines.length * 5 + 3;
+          doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+          var tlines = doc.splitTextToSize(row.text, colW - 4);
+          doc.text(tlines, margin + 2, y + 3);
+          y += tlines.length * 5 + 4;
         } else if (row.checkbox !== undefined) {
-          // Case à cocher
           checkPage(7);
-          doc.setDrawColor.apply(doc, GREY);
-          doc.setLineWidth(0.4);
-          doc.rect(margin + 2, y - 3.5, 4, 4);
+          var chkColor = row.checked ? GOLD : MUTED;
+          doc.setDrawColor(chkColor[0], chkColor[1], chkColor[2]);
+          doc.setLineWidth(0.5);
+          doc.roundedRect(margin + 2, y - 3, 4, 4, 0.5, 0.5);
           if (row.checked) {
-            doc.setTextColor.apply(doc, NAVY);
-            doc.setFontSize(8);
-            doc.text('\u2713', margin + 2.8, y);
+            doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+            doc.roundedRect(margin + 2.5, y - 2.5, 3, 3, 0.3, 0.3, 'F');
+            doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+            doc.setFontSize(6);
+            doc.text('\u2713', margin + 3.2, y);
           }
-          doc.setFontSize(9);
+          doc.setFontSize(8.5);
           doc.setFont('helvetica','normal');
-          doc.setTextColor.apply(doc, BLACK);
-          var lines = doc.splitTextToSize(row.checkbox || '', colW - 10);
-          doc.text(lines, margin + 8, y);
-          y += lines.length * 5 + 1;
+          doc.setTextColor(BLACK[0], BLACK[1], BLACK[2]);
+          var cl = doc.splitTextToSize(row.checkbox||'', colW - 10);
+          doc.text(cl, margin + 8, y);
+          y += cl.length * 5 + 2;
         } else if (row.separator) {
-          y += 4;
-          doc.setDrawColor.apply(doc, LIGHT);
+          y += 3;
+          doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
           doc.setLineWidth(0.3);
           doc.line(margin, y, pageW - margin, y);
           y += 4;
         }
       });
     }
-    y += 5;
+    y += 4;
   });
 
   // Pied de page sur toutes les pages
   var totalPages = doc.internal.getNumberOfPages();
   for (var p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setTextColor.apply(doc, GREY);
+    // Bande pied
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, pageH - 14, pageW, 14, 'F');
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.rect(0, pageH - 14, pageW, 0.8, 'F');
+    doc.setFontSize(6.5);
+    doc.setTextColor(180, 180, 180);
     doc.setFont('helvetica','normal');
-    doc.text('Caremma Finance \u2014 CIF \u2014 ORIAS n\u00b024007767 \u2014 Confidentiel', margin, pageH - 8);
-    doc.text('Page ' + p + '/' + totalPages, pageW - margin, pageH - 8, {align:'right'});
+    doc.text('Caremma Finance \u2014 CIF \u2014 ORIAS N\u00b024007767 \u2014 Bezons \u2014 Confidentiel', margin, pageH - 7);
+    doc.text('Page ' + p + ' / ' + totalPages, pageW - margin, pageH - 7, {align:'right'});
   }
 
   return doc;
 }
 
-// Extraire les données du parcours DOM vers des sections structurées
 function _extractParcoursData(sectionNums) {
   var sections = [];
   var SECTION_NAMES = {
