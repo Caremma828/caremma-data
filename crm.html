@@ -300,6 +300,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -439,6 +440,170 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--off);colo
 </div>
 
 <!-- ━━━ KYC BOARD ━━━ -->
+
+<!-- ━━━ LCB-FT / CONFORMITÉ ━━━ -->
+<div class="pg" id="pg-lcbft">
+  <div class="ph"><div class="pt">LCB-FT / Conformité</div><div class="ps">Registre clients, veille Tracfin & cartographie des risques — art. L.561 CMF</div></div>
+  <div class="tabs">
+    <button class="tb on" id="ltab-registre" onclick="lcbTab('registre',this)">📋 Registre clients</button>
+    <button class="tb" id="ltab-tracfin" onclick="lcbTab('tracfin',this)">📨 Veille Tracfin <span id="tracfin-badge" class="b br" style="display:none;margin-left:4px"><span id="tracfin-count">0</span></span></button>
+    <button class="tb" id="ltab-stats" onclick="lcbTab('stats',this)">📊 Statistiques</button>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn bgh bsm" onclick="lcbGenPDF()">📄 Registre PDF</button>
+      <button class="btn bgh bsm" onclick="lcbGenProcedurePDF()">📕 Procédure</button>
+    </span>
+  </div>
+
+  <!-- ── REGISTRE ── -->
+  <div class="tp on" id="ltp-registre">
+    <div class="g4" id="lcb-kpis" style="margin-bottom:1rem"></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="sh"><span class="st">Registre des fiches LCB-FT</span>
+        <button class="btn btn-gold-sm bsm" onclick="lcbNewFiche()">+ Nouvelle fiche client</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="lcb-search" class="fc" placeholder="🔍 Rechercher un client..." style="flex:1;min-width:160px" oninput="lcbFilter()">
+        <select id="lcb-filter-risk" class="fc" style="max-width:170px" onchange="lcbFilter()">
+          <option value="">Tous les risques</option>
+          <option value="faible">Faible</option><option value="standard">Standard</option><option value="eleve">Élevé</option>
+        </select>
+        <select id="lcb-filter-statut" class="fc" style="max-width:170px" onchange="lcbFilter()">
+          <option value="">Tous les statuts</option>
+          <option value="ok">À jour</option><option value="revision">Bientôt</option><option value="alerte">Dépassée</option><option value="attente">En attente</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl" style="font-size:12px">
+          <thead><tr><th>Client</th><th>Risque</th><th>PPE</th><th>Origine fonds</th><th>Dernière revue</th><th>Prochaine</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="lcb-tbl"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Formulaire fiche (modal in-page) -->
+    <div class="card" id="lcb-fiche-modal" style="display:none;border-left:3px solid var(--gold)">
+      <div class="sh"><span class="st" id="lcb-fiche-title">Nouvelle fiche LCB-FT</span>
+        <button class="btn bd bsm" onclick="document.getElementById('lcb-fiche-modal').style.display='none'">✗ Fermer</button>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Client</label>
+          <select id="lcb-f-client" class="fc" onchange="lcbAutoFill()"></select></div>
+        <div class="fg"><label class="fl">Niveau de risque</label>
+          <select id="lcb-f-risque" class="fc" onchange="lcbUpdateDiligence()">
+            <option value="faible">Faible</option><option value="standard" selected>Standard</option><option value="eleve">Élevé</option>
+          </select></div>
+      </div>
+      <div id="lcb-f-alerte-zone" style="display:none;background:var(--red2);border-radius:6px;padding:8px 12px;font-size:11.5px;color:var(--red);margin:6px 0;line-height:1.6">⚠ Risque élevé : diligences renforcées requises (art. L.561-10 CMF) — justificatif d'origine des fonds + validation hiérarchique + surveillance trimestrielle.</div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">PPE (Personne Politiquement Exposée)</label>
+          <select id="lcb-f-ppe" class="fc">
+            <option value="non">Non</option><option value="nationale">PPE nationale</option><option value="etrangere">PPE étrangère</option><option value="proche">Proche / famille de PPE</option>
+          </select></div>
+        <div class="fg"><label class="fl">FATCA / US Person</label>
+          <select id="lcb-f-fatca" class="fc"><option value="non">Non</option><option value="oui">Oui</option></select></div>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Résidence fiscale</label><input id="lcb-f-residence" class="fc" value="France"></div>
+        <div class="fg"><label class="fl">NIF / N° fiscal</label><input id="lcb-f-nif" class="fc" placeholder="Optionnel"></div>
+      </div>
+      <div class="fg" style="margin-top:6px"><label class="fl">Origine des fonds</label>
+        <div id="lcb-f-origines" style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;padding:4px 0">
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Épargne / revenus"> Épargne / revenus</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Salaires"> Salaires</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Cession immobilière"> Cession immobilière</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Cession d'entreprise"> Cession d'entreprise</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Héritage / donation"> Héritage / donation</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Produits financiers"> Produits financiers</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Activité professionnelle"> Activité professionnelle</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Autre"> Autre</label>
+        </div></div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Montant estimé du patrimoine (€)</label><input id="lcb-f-montant" type="number" class="fc" placeholder="ex. 250000"></div>
+        <div class="fg"><label class="fl">Diligences</label>
+          <select id="lcb-f-diligences" class="fc"><option value="simplifiees">Simplifiées</option><option value="normales" selected>Normales</option><option value="renforcees">Renforcées</option></select></div>
+      </div>
+      <div class="fg" style="margin-top:6px"><label class="fl">Pièces collectées</label>
+        <div id="lcb-f-pieces" style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;padding:4px 0">
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="CNI / Passeport"> CNI / Passeport</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Justificatif de domicile"> Justificatif de domicile</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Justificatif d'origine des fonds"> Justif. origine des fonds</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Avis d'imposition"> Avis d'imposition</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="Bénéficiaire effectif"> Bénéficiaire effectif</label>
+          <label style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="RIB"> RIB</label>
+        </div></div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Date de revue</label><input id="lcb-f-date-revue" type="date" class="fc"></div>
+        <div class="fg"><label class="fl">Fréquence de revue (mois)</label>
+          <select id="lcb-f-freq" class="fc"><option value="3">3 — trimestrielle</option><option value="6">6 — semestrielle</option><option value="12" selected>12 — annuelle</option></select></div>
+      </div>
+      <div class="fg" style="margin-top:6px"><label class="fl">Observations / Notes</label><textarea id="lcb-f-notes" class="fc" style="min-height:54px"></textarea></div>
+      <button class="btn bp2 bblk" onclick="lcbSaveFiche()">💾 Enregistrer la fiche</button>
+    </div>
+  </div>
+
+  <!-- ── VEILLE TRACFIN ── -->
+  <div class="tp" id="ltp-tracfin">
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="sh"><span class="st">📨 Saisir un bulletin / publication Tracfin</span></div>
+        <div class="fg2">
+          <div class="fg"><label class="fl">Date</label><input id="tf-date" type="date" class="fc"></div>
+          <div class="fg"><label class="fl">Type</label>
+            <select id="tf-type" class="fc">
+              <option value="tendances">Tendances & analyses</option>
+              <option value="alerte">Alerte / vigilance</option>
+              <option value="circulaire">Circulaire</option>
+              <option value="rapport">Rapport</option>
+              <option value="autre">Autre</option>
+            </select></div>
+        </div>
+        <div class="fg"><label class="fl">Objet</label><input id="tf-objet" class="fc" placeholder="Intitulé du bulletin"></div>
+        <div class="fg"><label class="fl">Résumé / mesures internes prises</label><textarea id="tf-resume" class="fc" style="min-height:48px"></textarea></div>
+        <div class="fg2">
+          <div class="fg"><label class="fl">Mesure</label>
+            <select id="tf-mesures" class="fc">
+              <option value="information">Information / classement</option>
+              <option value="vigilance">Vigilance renforcée</option>
+              <option value="declaration">Déclaration de soupçon</option>
+              <option value="archivage">Archivage</option>
+            </select></div>
+          <div class="fg"><label class="fl">Lien (URL)</label><input id="tf-url" class="fc" placeholder="https://"></div>
+        </div>
+        <button class="btn bp2 bblk" onclick="tracfinSave()">💾 Enregistrer le bulletin</button>
+      </div>
+      <div class="card">
+        <div class="sh"><span class="st">📥 Synchronisation Gmail</span></div>
+        <p style="font-size:11.5px;color:var(--muted);margin-bottom:.7rem;line-height:1.6">Importez automatiquement les emails Tracfin reçus sur les 12 derniers mois. Collez un token Gmail OAuth valide.</p>
+        <div class="fg"><label class="fl">Token Gmail (Bearer)</label><input id="tracfin-gmail-token" class="fc" placeholder="ya29...."></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn bgh bsm" onclick="tracfinTestGmail()">🔌 Tester la connexion</button>
+          <button class="btn bp2 bsm" onclick="tracfinFetchGmail()">🔄 Importer emails Tracfin</button>
+        </div>
+        <div id="tracfin-gmail-status" style="display:none;margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sh"><span class="st">Bulletins enregistrés</span><span id="tracfin-total" style="font-size:10px;color:var(--muted)">0 bulletin(s)</span></div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Dernière publication : <span id="tracfin-last-date">—</span></div>
+      <div id="tracfin-list"></div>
+    </div>
+  </div>
+
+  <!-- ── STATISTIQUES ── -->
+  <div class="tp" id="ltp-stats">
+    <div class="g4" id="lcb-stats-kpis" style="margin-bottom:1rem"></div>
+    <div class="g2">
+      <div class="card">
+        <div class="sh"><span class="st">Répartition par niveau de risque</span></div>
+        <canvas id="lcb-risque-chart" height="220"></canvas>
+      </div>
+      <div class="card">
+        <div class="sh"><span class="st">Revues à venir (60 jours)</span></div>
+        <div id="lcb-revision-list" style="max-height:300px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ━━━ DOCUMENTS VIERGES ━━━ -->
 <div class="pg" id="pg-docs-vierges">
@@ -1456,11 +1621,16 @@ async function getMsgsFromBin(email){
 }
 // ── Écriture messages dans bin global
 async function putMsgsToBin(data){
-  await fetch(`https://api.jsonbin.io/v3/b/${MSG_BIN}`,{
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${MSG_BIN}`,{
     method:'PUT',
-    headers:{'Content-Type':'application/json','X-Master-Key':JBKEY},
+    headers:{'Content-Type':'application/json','X-Master-Key':JBKEY,'X-Bin-Versioning':'false'},
     body:JSON.stringify(data)
   });
+  if(!r.ok){
+    let det=''; try{ det=await r.text(); }catch(_){}
+    throw new Error('JSONBin PUT '+r.status+(det?' — '+det.slice(0,140):''));
+  }
+  return r.json();
 }
 
 const jbOK = () => !!JBKEY;
@@ -1471,12 +1641,320 @@ async function jbPutCRM(id,d){const r=await fetch(`https://api.jsonbin.io/v3/b/$
 // ━━━ ONGLET ÉVOLUTION PORTEFEUILLE (BASE 100) ━━━
 
 // ═══ PORTEFEUILLE - Saisie manuelle ═══
+
+// ═══ DÉTAIL PORTEFEUILLE — PARSING & COTATIONS ═══
+
+function renderPtfLines(c){
+  var lines = c.ptfLines||[];
+  if(!lines.length) return '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Aucune ligne.</div>';
+
+  var total = lines.reduce(function(s,l){ return s+(+l.valeur||0); },0);
+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    +'<thead><tr style="background:rgba(201,168,76,0.08)">'
+    +'<th style="padding:8px 10px;text-align:left;color:var(--gold);font-size:10px;font-weight:600;letter-spacing:.5px">INSTRUMENT</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">ISIN</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">QTÉ</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">COURS</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">VALEUR (€)</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">+/- LAT.</th>'
+    +'<th style="padding:8px 10px;text-align:right;color:var(--gold);font-size:10px">ALLOC.</th>'
+    +'</tr></thead><tbody>';
+
+  lines.forEach(function(l,i){
+    var pnl = l.pru && l.quantite ? (l.cours||l.prix) ? ((l.cours||l.prix)-l.pru)*l.quantite : null : null;
+    var pnlPct = l.pru && (l.cours||l.prix) ? (((l.cours||l.prix)-l.pru)/l.pru*100) : null;
+    var alloc = total ? ((+l.valeur||0)/total*100).toFixed(1) : '—';
+    var pnlCol = pnl===null?'var(--muted)':pnl>=0?'var(--green)':'var(--red)';
+    var pnlStr = pnl===null?'—':(pnl>=0?'+':'')+pnl.toFixed(0)+'€'+(pnlPct!==null?' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)':'');
+
+    html += '<tr style="background:'+(i%2?'rgba(255,255,255,0.02)':'transparent')+'">'
+      +'<td style="padding:7px 10px;color:var(--text);font-weight:500">'
+        +(l.liveOk?'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px"></span>':'')
+        +escH(l.nom||'—')
+        +(l.type?'<span style="font-size:9px;color:var(--muted);margin-left:4px">'+escH(l.type)+'</span>':'')
+      +'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:var(--muted);font-size:11px">'+escH(l.isin||'—')+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:var(--text2)">'+escH(String(l.quantite||'—'))+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:var(--text)">'+(l.cours||l.prix?escH(String((l.cours||l.prix).toFixed(2)))+'&nbsp;€':'—')+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:var(--text);font-weight:600">'+escH(Number(l.valeur||0).toLocaleString('fr-FR'))+'&nbsp;€</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:'+pnlCol+'">'+pnlStr+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;color:var(--muted)">'+alloc+'%</td>'
+      +'</tr>';
+  });
+
+  html += '</tbody><tfoot>'
+    +'<tr style="background:rgba(201,168,76,0.06);border-top:1px solid rgba(201,168,76,0.2)">'
+    +'<td colspan="4" style="padding:8px 10px;font-weight:600;color:var(--gold)">TOTAL</td>'
+    +'<td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">'+total.toLocaleString('fr-FR')+'&nbsp;€</td>'
+    +'<td colspan="2"></td>'
+    +'</tr></tfoot></table>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:right">'
+    +(c.ptfLinesDate?'Mis à jour le '+c.ptfLinesDate:'')
+    +(c.ptfLinesLiveAt?' · Cotations : '+c.ptfLinesLiveAt:'')
+    +'</div>';
+  return html;
+}
+
+// ── Parser PDF/Excel/CSV ──
+function ptfImportDetail(input, clientId){
+  var file = input.files[0];
+  if(!file){ return; }
+  input.value='';
+  var ext = file.name.split('.').pop().toLowerCase();
+  toast('Analyse du fichier...','');
+
+  if(ext==='pdf'){
+    ptfParsePDF(file, clientId);
+  } else if(ext==='xlsx'||ext==='xls'){
+    ptfParseExcel(file, clientId);
+  } else {
+    // CSV/TXT
+    var reader = new FileReader();
+    reader.onload = function(e){ ptfParseCSV(e.target.result, clientId); };
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+function ptfParsePDF(file, clientId){
+  // Lire le PDF et extraire le texte via FileReader
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result.split(',')[1];
+    // Utiliser l'API Claude pour parser le PDF
+    ptfParseWithClaude(base64, 'pdf', file.name, clientId);
+  };
+  reader.readAsDataURL(file);
+}
+
+function ptfParseExcel(file, clientId){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      // Utiliser SheetJS si disponible
+      if(typeof XLSX !== 'undefined'){
+        var wb = XLSX.read(e.target.result, {type:'array'});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var data = XLSX.utils.sheet_to_csv(ws);
+        ptfParseCSV(data, clientId);
+      } else {
+        var base64 = btoa(String.fromCharCode.apply(null,new Uint8Array(e.target.result)));
+        ptfParseWithClaude(base64,'xlsx',file.name,clientId);
+      }
+    }catch(ex){ toast('Erreur lecture Excel: '+ex.message,'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function ptfParseCSV(text, clientId){
+  // Parser CSV/TXT générique
+  var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var ptfLines = [];
+  var sep = text.indexOf(';')>text.indexOf(',')?';':',';
+
+  // Détecter les colonnes
+  var headers = lines[0].split(sep).map(function(h){ return h.trim().toLowerCase().replace(/['"]/g,''); });
+  var colMap = {};
+  headers.forEach(function(h,i){
+    if(/nom|libel|instrument|fonds|titre|name/.test(h)) colMap.nom=i;
+    else if(/isin/.test(h)) colMap.isin=i;
+    else if(/qte|quant|nb|nbre/.test(h)) colMap.quantite=i;
+    else if(/cours|prix|price|vl|nav/.test(h)) colMap.cours=i;
+    else if(/val|montant|amount|total/.test(h)) colMap.valeur=i;
+    else if(/pru|pmr|prix.rev/.test(h)) colMap.pru=i;
+    else if(/type|categ|class/.test(h)) colMap.type=i;
+  });
+
+  for(var i=1;i<lines.length;i++){
+    var cols = lines[i].split(sep).map(function(c){ return c.trim().replace(/['"]/g,''); });
+    if(cols.length<2) continue;
+    var nom = colMap.nom!==undefined ? cols[colMap.nom] : cols[0];
+    if(!nom||nom.length<2) continue;
+    var line = {
+      nom: nom,
+      isin: colMap.isin!==undefined ? cols[colMap.isin] : '',
+      quantite: colMap.quantite!==undefined ? parseFloat(cols[colMap.quantite])||0 : 0,
+      cours: colMap.cours!==undefined ? parseFloat(cols[colMap.cours])||0 : 0,
+      valeur: colMap.valeur!==undefined ? parseFloat(cols[colMap.valeur].replace(/\s/g,'').replace(',','.'))||0 : 0,
+      pru: colMap.pru!==undefined ? parseFloat(cols[colMap.pru])||0 : 0,
+      type: colMap.type!==undefined ? cols[colMap.type] : ''
+    };
+    if(line.valeur||line.quantite) ptfLines.push(line);
+  }
+
+  ptfSaveLines(clientId, ptfLines);
+}
+
+async function ptfParseWithClaude(base64, fileType, fileName, clientId){
+  // Utiliser l'API Claude pour parser le PDF/Excel
+  toast('Analyse IA en cours...','');
+  try{
+    var prompt = 'Voici un relevé de portefeuille financier ('+fileType+'). '
+      +'Extrait toutes les lignes du portefeuille et retourne UNIQUEMENT un JSON valide (sans markdown) de la forme: '
+      +'[{"nom":"Nom instrument","isin":"ISIN","quantite":100,"cours":10.5,"valeur":1050,"pru":9.8,"type":"Fonds"}]. '
+      +'Si un champ est absent mets null. Ne retourne QUE le tableau JSON.';
+
+    var msgContent = [{type:'text',text:prompt}];
+    if(fileType==='pdf'){
+      msgContent.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}});
+    } else {
+      msgContent.push({type:'text',text:'Données base64 du fichier: '+base64.substring(0,500)+'...'});
+    }
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{role:'user',content:msgContent}]
+      })
+    });
+    var data = await resp.json();
+    var text = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    var clean = text.replace(/```json|```/g,'').trim();
+    var lines2 = JSON.parse(clean);
+    ptfSaveLines(clientId, lines2);
+  }catch(e){
+    toast('Erreur parsing IA: '+(e.message||e),'error');
+    console.error(e);
+  }
+}
+
+function ptfSaveLines(clientId, lines){
+  if(!lines||!lines.length){ toast('Aucune ligne détectée','error'); return; }
+  var now = new Date().toLocaleDateString('fr-FR');
+  var idx2 = CLIENTS.findIndex(function(c){ return c.id===clientId; });
+  if(idx2<0) return;
+  CLIENTS[idx2].ptfLines = lines;
+  CLIENTS[idx2].ptfLinesDate = now;
+  saveClientsLocal();
+  // Refresh cotations automatiquement
+  ptfRefreshQuotes(clientId);
+  toast(lines.length+' lignes importées ✓','success');
+}
+
+// ── Cotations en temps réel ──
+async function ptfRefreshQuotes(clientId){
+  var cc = CLIENTS.find(function(c){ return c.id===clientId; });
+  if(!cc||!cc.ptfLines||!cc.ptfLines.length){ toast('Aucune ligne à actualiser','error'); return; }
+  toast('Récupération des cotations...','');
+
+  var isins = cc.ptfLines.filter(function(l){ return l.isin&&l.isin.length>5; }).map(function(l){ return l.isin; });
+  var noms  = cc.ptfLines.map(function(l){ return l.nom; });
+
+  if(!isins.length){ toast('Aucun ISIN détecté pour les cotations','warn'); return; }
+
+  var updated = 0;
+  var liveAt = new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+
+  // Appel Yahoo Finance via proxy public (pas de clé requise)
+  for(var i=0;i<isins.length;i++){
+    var isin = isins[i];
+    try{
+      // Essayer Yahoo Finance
+      var ticker = await isinToTicker(isin);
+      if(ticker){
+        var price = await fetchYahooPrice(ticker);
+        if(price){
+          var lineIdx = cc.ptfLines.findIndex(function(l){ return l.isin===isin; });
+          if(lineIdx>=0){
+            cc.ptfLines[lineIdx].cours = price;
+            if(cc.ptfLines[lineIdx].quantite){
+              cc.ptfLines[lineIdx].valeur = parseFloat((price * cc.ptfLines[lineIdx].quantite).toFixed(2));
+            }
+            cc.ptfLines[lineIdx].liveOk = true;
+            updated++;
+          }
+        }
+      }
+    }catch(ex){ console.warn('Quote error '+isin+':', ex); }
+  }
+
+  cc.ptfLinesLiveAt = liveAt;
+  // Recalculer la valeur totale du portefeuille
+  var total = cc.ptfLines.reduce(function(s,l){ return s+(+l.valeur||0); },0);
+  if(total>0){
+    cc.patrimoine = cc.patrimoine||{};
+    cc.patrimoine.valeur = total;
+    cc.patrimoine.dateMAJ = new Date().toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
+  }
+
+  saveClientsLocal();
+  syncPtfToPortail(cc);
+  rdTabPtfEvol(cc);
+  toast(updated+' cotation(s) mise(s) à jour ✓','success');
+}
+
+async function isinToTicker(isin){
+  // Mapping ISIN → ticker Yahoo Finance
+  // Pour les fonds FR : souvent isin direct
+  // Pour les actions : chercher via l'API OpenFIGI
+  try{
+    var r = await fetch('https://api.openfigi.com/v3/mapping',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify([{idType:'ID_ISIN',idValue:isin,exchCode:'EPA'}])
+    });
+    if(!r.ok) throw new Error(r.status);
+    var data = await r.json();
+    if(data[0]&&data[0].data&&data[0].data[0]){
+      return data[0].data[0].ticker+'.PA';
+    }
+    // Fallback : essayer avec isin directement
+    return isin+'.PA';
+  }catch(e){
+    return isin; // essayer l'ISIN directement comme ticker
+  }
+}
+
+async function fetchYahooPrice(ticker){
+  // Yahoo Finance via cors-anywhere ou allorigins
+  try{
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(ticker)+'?interval=1d&range=1d';
+    var r = await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+    if(!r.ok) throw new Error(r.status);
+    var data = await r.json();
+    var price = data&&data.chart&&data.chart.result&&data.chart.result[0]
+      &&data.chart.result[0].meta&&data.chart.result[0].meta.regularMarketPrice;
+    return price||null;
+  }catch(e){
+    console.warn('Yahoo price error:', e);
+    return null;
+  }
+}
+
+// ── Performance TWR (Time-Weighted Return) neutralisant les apports/retraits ──
+// Convention : flux = flux externe net du mois (apport +, retrait −),
+// supposé intervenir en début de période. Retourne la série base 100 et
+// écrit perf (perf cumulée nette de flux, en %) sur chaque point.
+function ptfComputeTWR(hist){
+  if(!hist||!hist.length) return [];
+  var out=[]; var idx=100;
+  for(var i=0;i<hist.length;i++){
+    var h=hist[i];
+    var cur=parseFloat(h.valeur)||0;
+    if(i>0){
+      var prev=parseFloat(hist[i-1].valeur)||0;
+      var flux=parseFloat(h.flux)||0;
+      var basis=prev+flux;            // capital investi en début de période
+      var r=basis>0 ? (cur/basis-1) : 0;
+      idx=idx*(1+r);
+    }
+    var b100=Math.round(idx*100)/100;
+    h.perf=Math.round((b100-100)*100)/100;   // perf cumulée nette de flux
+    out.push({date:h.date, b100:b100, valeur:cur, flux:parseFloat(h.flux)||0});
+  }
+  return out;
+}
+
 function ptfSaveEntry(cid){
   var dateVal  = document.getElementById('ptf-e-date')  ? document.getElementById('ptf-e-date').value  : '';
   var valStr   = document.getElementById('ptf-e-val')   ? document.getElementById('ptf-e-val').value   : '';
-  var perfStr  = document.getElementById('ptf-e-perf')  ? document.getElementById('ptf-e-perf').value  : '';
+  var fluxStr  = document.getElementById('ptf-e-flux')  ? document.getElementById('ptf-e-flux').value  : '';
   var profilEl = document.getElementById('ptf-e-profil');
   var valeur   = parseFloat(valStr)||0;
+  var flux     = parseFloat(fluxStr)||0;
 
   if(!dateVal||!valeur){ toast('Date et valeur requis','error'); return; }
 
@@ -1490,30 +1968,20 @@ function ptfSaveEntry(cid){
   var d = new Date(dateVal+'-01');
   var label = d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
 
-  // Calcul automatique de la performance par rapport à la valeur initiale
-  var hist = cc.patrimoine.historique;
-  var valDepart = hist.length ? hist[0].valeur : valeur;
-  var perf = perfStr ? parseFloat(perfStr)
-           : (valDepart && valDepart!==valeur)
-             ? parseFloat(((valeur - valDepart) / valDepart * 100).toFixed(2))
-             : 0;
-
   var existing = cc.patrimoine.historique.findIndex(function(h){ return h.dateRaw===dateVal; });
-  var entry = {date:label, valeur:valeur, perf:perf, dateRaw:dateVal};
+  var entry = {date:label, valeur:valeur, flux:flux, perf:0, dateRaw:dateVal};
 
   if(existing>=0) cc.patrimoine.historique[existing] = entry;
   else            cc.patrimoine.historique.push(entry);
   cc.patrimoine.historique.sort(function(a,b){ return a.dateRaw<b.dateRaw?-1:1; });
 
-  // Recalculer toutes les perfs par rapport à la première valeur
-  var base = cc.patrimoine.historique[0].valeur;
-  cc.patrimoine.historique.forEach(function(h){
-    h.perf = base ? parseFloat(((h.valeur-base)/base*100).toFixed(2)) : 0;
-  });
+  // Recalculer toutes les perfs en time-weighted (neutralise apports/retraits)
+  ptfComputeTWR(cc.patrimoine.historique);
+  var lastH = cc.patrimoine.historique[cc.patrimoine.historique.length-1];
 
   cc.patrimoine.valeur  = valeur;
   cc.patrimoine.dateMAJ = label;
-  cc.patrimoine.perfYTD = perf;
+  cc.patrimoine.perfYTD = lastH ? lastH.perf : 0;
   if(profilEl&&profilEl.value) cc.profil = profilEl.value;
 
   // ⚠️ Stocker aussi dans ptfHistory pour le portail
@@ -1537,9 +2005,10 @@ function rdTabPtfEvol(c) {
   window._ptfDeleteEntry = function(cid, idx) {
     var cc = gc(cid); if(!cc||!cc.patrimoine||!cc.patrimoine.historique) return;
     cc.patrimoine.historique.splice(idx,1);
+    ptfComputeTWR(cc.patrimoine.historique);
     if(cc.patrimoine.historique.length){
       var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
-      cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
+      cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date; cc.patrimoine.perfYTD=last.perf;
     }
     lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc); toast('Supprimé','');
   };
@@ -1557,27 +2026,29 @@ function rdTabPtfEvol(c) {
       if(!cc.patrimoine) cc.patrimoine={};
       if(!cc.patrimoine.historique) cc.patrimoine.historique=[];
       lines.forEach(function(line){
-        // Format attendu: YYYY-MM ou MM/YYYY;valeur ou YYYY-MM,valeur
-        var m = line.match(/(\d{4})-(\d{2})[;,\s]+([\d\s.,]+)/);
-        if(!m) m = line.match(/(\d{2})[/](\d{4})[;,\s]+([\d\s.,]+)/);
+        // Format attendu: AAAA-MM;valeur  ou  AAAA-MM;valeur;flux  (MM/AAAA accepté)
+        var m = line.match(/(\d{4})-(\d{2})[;,\s]+([\d\s.,]+?)(?:\s*;\s*(-?[\d\s.,]+))?\s*$/);
+        if(!m) m = line.match(/(\d{2})[/](\d{4})[;,\s]+([\d\s.,]+?)(?:\s*;\s*(-?[\d\s.,]+))?\s*$/);
         if(!m) return;
         var year,month;
         if(m[0].indexOf('/')>0){month=m[1];year=m[2];}else{year=m[1];month=m[2];}
         var rawDate = year+'-'+month;
         var valStr = m[3].replace(/\s/g,'').replace(',','.');
         var valeur = parseFloat(valStr); if(!valeur||isNaN(valeur)) return;
+        var flux = m[4] ? (parseFloat(m[4].replace(/\s/g,'').replace(',','.'))||0) : 0;
         var d = new Date(rawDate+'-01');
         var label = d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
         var existing = cc.patrimoine.historique.findIndex(function(h){return h.dateRaw===rawDate;});
-        var entry = {date:label,valeur:valeur,dateRaw:rawDate};
+        var entry = {date:label,valeur:valeur,flux:flux,perf:0,dateRaw:rawDate};
         if(existing>=0) cc.patrimoine.historique[existing]=entry;
         else cc.patrimoine.historique.push(entry);
         imported++;
       });
-      if(!imported){toast('Aucune donnée reconnue. Format attendu: AAAA-MM;valeur','error');return;}
+      if(!imported){toast('Aucune donnée reconnue. Format attendu: AAAA-MM;valeur[;flux]','error');return;}
       cc.patrimoine.historique.sort(function(a,b){return a.dateRaw<b.dateRaw?-1:1;});
+      ptfComputeTWR(cc.patrimoine.historique);
       var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
-      cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
+      cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date; cc.patrimoine.perfYTD=last.perf;
       lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
       toast(imported+' valeur(s) importée(s) ✓','success');
     };
@@ -1585,27 +2056,24 @@ function rdTabPtfEvol(c) {
     input.value='';
   };
 
-  // ── Calculer base 100 ──
-  function toBase100(hist) {
-    if(!hist||!hist.length) return [];
-    var valDepart = parseFloat(hist[0].valeur)||1;
-    return hist.map(function(h){
-      return {date:h.date, b100:Math.round((parseFloat(h.valeur)/valDepart)*100*100)/100, valeur:h.valeur};
-    });
-  }
-
-  var base100 = toBase100(hist);
+  // ── Calculer base 100 en time-weighted (neutralise apports/retraits) ──
+  var base100 = ptfComputeTWR(hist);
   var valDepart = hist.length ? hist[0].valeur : 0;
   var valActuelle = hist.length ? hist[hist.length-1].valeur : 0;
-  var perfTotale = valDepart ? ((valActuelle-valDepart)/valDepart*100).toFixed(2) : 0;
+  var totalFlux = hist.reduce(function(s,h){ return s+(parseFloat(h.flux)||0); }, 0);
+  var perfTotale = base100.length ? (base100[base100.length-1].b100 - 100).toFixed(2) : 0;
 
   // ── Tableau historique ──
   var rows = hist.map(function(h,i){
     var b = base100[i];
     var perfColor = b&&b.b100>=100?'color:var(--green)':'color:var(--red)';
+    var fx = parseFloat(h.flux)||0;
+    var fluxCell = fx===0 ? '<span style="color:var(--muted)">—</span>'
+      : '<span style="color:'+(fx>0?'var(--green)':'var(--red)')+';font-weight:600">'+(fx>0?'+':'')+fx.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0})+'</span>';
     return `<tr>
       <td style="font-size:12px;font-weight:500">${h.date}</td>
       <td style="font-size:12px;font-weight:700;color:var(--navy)">${h.valeur?h.valeur.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}):'—'}</td>
+      <td style="font-size:12px">${fluxCell}</td>
       <td style="font-size:12px;font-weight:600;${perfColor}">${b?b.b100.toFixed(1):'—'}</td>
       <td style="font-size:12px;color:var(--muted)">${h.perf!=null?(h.perf>=0?'+':'')+h.perf+'%':'—'}</td>
       <td><button class="btn bd bsm" onclick="_ptfDeleteEntry('${c.id}',${i})" title="Supprimer">🗑</button></td>
@@ -1620,9 +2088,9 @@ function rdTabPtfEvol(c) {
       <div style="font-size:10px;color:var(--muted);margin-top:4px">${hist.length?hist[0].date:'—'}</div>
     </div>
     <div class="card">
-      <div class="kl">Performance totale</div>
+      <div class="kl">Performance nette (hors flux)</div>
       <div class="kv" style="font-size:18px;color:${parseFloat(perfTotale)>=0?'var(--green)':'var(--red)'}">${valDepart?(parseFloat(perfTotale)>=0?'+':'')+perfTotale+'%':'—'}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">${hist.length?'Depuis '+hist[0].date:'Aucune donnée'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${hist.length?'Time-weighted · apports/retraits neutralisés':'Aucune donnée'}${totalFlux?' · flux net '+(totalFlux>0?'+':'')+totalFlux.toLocaleString('fr-FR',{maximumFractionDigits:0})+' €':''}</div>
     </div>
   </div>
 
@@ -1644,7 +2112,7 @@ function rdTabPtfEvol(c) {
         <div class="fg"><label class="fl">Valeur (€)</label><input id="ptf-e-val" type="number" class="fc" placeholder="125 000" value="${valActuelle||''}"></div>
       </div>
       <div class="fg2" style="margin-bottom:.7rem">
-        <div class="fg"><label class="fl">Perf. YTD (%)</label><input id="ptf-e-perf" type="number" step="0.01" class="fc" placeholder="4.20" value="${c.patrimoine&&c.patrimoine.perfYTD!=null?c.patrimoine.perfYTD:''}"></div>
+        <div class="fg"><label class="fl">Apport / Retrait du mois (€)</label><input id="ptf-e-flux" type="number" step="0.01" class="fc" placeholder="0" title="+ pour un apport, − pour un retrait"></div>
         <div class="fg"><label class="fl">Profil MIF2</label>
           <select id="ptf-e-profil" class="fc">
             <option value="">— Profil —</option>
@@ -1652,18 +2120,19 @@ function rdTabPtfEvol(c) {
           </select>
         </div>
       </div>
+      <div style="font-size:10.5px;color:var(--muted);margin:-4px 0 .55rem;line-height:1.5">💡 Apport = <b style="color:var(--green)">+</b> · Retrait = <b style="color:var(--red)">−</b>. La performance est calculée <i>time-weighted</i> : les versements et rachats n'apparaissent pas comme du rendement.</div>
       <button class="btn bp2 bblk" onclick="_ptfSaveEntry('${c.id}')">💾 Enregistrer → Portail</button>
     </div>
 
     <!-- IMPORT CSV / RELEVÉ -->
     <div class="card">
       <div class="sh"><span class="st">📥 Import relevé CSV</span></div>
-      <p style="font-size:11.5px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Importez un fichier CSV avec votre historique.<br>Format attendu par ligne :</p>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:.75rem;line-height:1.6">Importez un fichier CSV avec votre historique.<br>Format : <code>AAAA-MM;valeur</code> ou <code>AAAA-MM;valeur;flux</code></p>
       <div style="background:var(--cream);border-radius:6px;padding:10px 12px;font-size:11px;font-family:monospace;color:var(--navy);margin-bottom:.85rem;line-height:1.8">
         2024-01;125000<br>
-        2024-02;127500<br>
-        2024-03;124800<br>
-        <span style="color:var(--muted);font-style:italic">(ou MM/YYYY;valeur)</span>
+        2024-02;127500;5000<br>
+        2024-03;124800;-2000<br>
+        <span style="color:var(--muted);font-style:italic">(flux : apport + / retrait −, optionnel)</span>
       </div>
       <input type="file" id="ptf-releve-input" style="display:none" accept=".csv,.txt" onchange="_ptfImportReleve(this)">
       <button class="btn bgh bblk" onclick="document.getElementById('ptf-releve-input').click()">📂 Importer un fichier CSV</button>
@@ -1681,28 +2150,31 @@ function rdTabPtfEvol(c) {
     <div class="sh"><span class="st">Historique des valeurs</span><span style="font-size:10px;color:var(--muted)">${hist.length} entrée(s) · Base 100 = ${hist[0].date}</span></div>
     <div style="overflow-x:auto">
       <table class="tbl" style="font-size:12px">
-        <thead><tr><th>Période</th><th>Valeur (€)</th><th>Base 100</th><th>Perf YTD</th><th></th></tr></thead>
+        <thead><tr><th>Période</th><th>Valeur (€)</th><th>Apport/Retrait</th><th>Base 100</th><th>Perf nette</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
     <button class="btn bd bsm" style="margin-top:10px" onclick="if(confirm('Effacer tout l\'historique ?')){var cc=gc('${c.id}');cc.patrimoine.historique=[];lsSave();syncPtfToPortail(cc);rdTabPtfEvol(cc);}">🗑 Effacer l'historique</button>
+  </div>
+
+  <!-- DÉTAIL DU PORTEFEUILLE -->
+  <div class="card" style="margin-top:14px">
+    <div class="sh" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span class="st">📋 Détail du portefeuille — Lignes & cotations</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp2 bsm" onclick="document.getElementById('ptf-detail-file-${c.id}').click()">📂 Importer PDF/Excel/CSV</button>
+        <button class="btn bgh bsm" onclick="ptfRefreshQuotes('${c.id}')">↻ Cotations live</button>
+      </div>
+    </div>
+    <input type="file" id="ptf-detail-file-${c.id}" style="display:none" accept=".pdf,.xlsx,.xls,.csv,.txt" onchange="ptfImportDetail(this,'${c.id}')">
+    <div id="ptf-detail-wrap-${c.id}" style="margin-top:10px">
+      ${(c.ptfLines&&c.ptfLines.length) ? renderPtfLines(c) : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">📂 Importez un relevé Auris Gestion (PDF/Excel/CSV) pour afficher le détail des lignes avec cotations en temps réel.</div>'}
+    </div>
   </div>`:''} 
   `;
 
   // ── Dessiner le graphique base 100 ──
   if(hist.length>=2 && typeof Chart !== 'undefined'){
-    // Auto-calcul perf quand on saisit une valeur
-    var ptfValInp = document.getElementById('ptf-e-val');
-    var ptfPerfInp = document.getElementById('ptf-e-perf');
-    if(ptfValInp && ptfPerfInp){
-      ptfValInp.oninput = function(){
-        var v = parseFloat(this.value)||0;
-        if(!v || !hist.length) return;
-        var base2 = hist[0].valeur;
-        if(base2) ptfPerfInp.value = ((v-base2)/base2*100).toFixed(2);
-      };
-    }
-
     setTimeout(function(){
       var canvas = document.getElementById('ptf-base100-chart');
       if(!canvas) return;
@@ -1735,10 +2207,13 @@ function rdTabPtfEvol(c) {
               label:function(ctx){
                 if(ctx.datasetIndex===0){
                   var h = hist[ctx.dataIndex];
-                  return [
+                  var out = [
                     'Base 100 : '+ctx.parsed.y.toFixed(1),
                     'Valeur : '+(h.valeur?h.valeur.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}):'—')
                   ];
+                  var fx = parseFloat(h.flux)||0;
+                  if(fx) out.push('Flux : '+(fx>0?'+':'')+fx.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}));
+                  return out;
                 }
                 return 'Référence : 100';
               }
@@ -1768,26 +2243,28 @@ window._ptfPasteImport = function(cid) {
   var lines = text.split(/[\n\r]+/).filter(function(l){return l.trim();});
   var imported = 0;
   lines.forEach(function(line){
-    var m = line.match(/(\d{4})-(\d{2})[;,\s]+([\d\s.,]+)/);
-    if(!m) m = line.match(/(\d{2})[/](\d{4})[;,\s]+([\d\s.,]+)/);
+    var m = line.match(/(\d{4})-(\d{2})[;,\s]+([\d\s.,]+?)(?:\s*;\s*(-?[\d\s.,]+))?\s*$/);
+    if(!m) m = line.match(/(\d{2})[/](\d{4})[;,\s]+([\d\s.,]+?)(?:\s*;\s*(-?[\d\s.,]+))?\s*$/);
     if(!m) return;
     var year,month;
     if(m[0].indexOf('/')>0){month=m[1];year=m[2];}else{year=m[1];month=m[2];}
     var rawDate=year+'-'+month;
     var valStr=m[3].replace(/\s/g,'').replace(',','.');
     var valeur=parseFloat(valStr); if(!valeur||isNaN(valeur)) return;
+    var flux=m[4]?(parseFloat(m[4].replace(/\s/g,'').replace(',','.'))||0):0;
     var d=new Date(rawDate+'-01');
     var label=d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
     var existing=cc.patrimoine.historique.findIndex(function(h){return h.dateRaw===rawDate;});
-    var entry={date:label,valeur:valeur,dateRaw:rawDate};
+    var entry={date:label,valeur:valeur,flux:flux,perf:0,dateRaw:rawDate};
     if(existing>=0) cc.patrimoine.historique[existing]=entry;
     else cc.patrimoine.historique.push(entry);
     imported++;
   });
-  if(!imported){toast('Format non reconnu. Essayez: AAAA-MM;valeur','error');return;}
+  if(!imported){toast('Format non reconnu. Essayez: AAAA-MM;valeur[;flux]','error');return;}
   cc.patrimoine.historique.sort(function(a,b){return a.dateRaw<b.dateRaw?-1:1;});
+  ptfComputeTWR(cc.patrimoine.historique);
   var last=cc.patrimoine.historique[cc.patrimoine.historique.length-1];
-  cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date;
+  cc.patrimoine.valeur=last.valeur; cc.patrimoine.dateMAJ=last.date; cc.patrimoine.perfYTD=last.perf;
   lsSave(); syncPtfToPortail(cc); rdTabPtfEvol(cc);
   toast(imported+' valeur(s) importée(s) ✓','success');
 };
@@ -1888,6 +2365,7 @@ async function sendTM(){
   const inp=document.getElementById('tmi'); if(!inp) return;
   const text=inp.value.trim(); if(!text) return;
   const c=gc(CID); if(!c) return;
+  if(!c.email){ toast("Ce client n'a pas d'email — le portail ne peut pas recevoir le message.",'error'); return; }
   const msg={from:'advisor',text,time:now(),date:today()};
   inp.value='';
   try{
@@ -1900,12 +2378,12 @@ async function sendTM(){
     uc(CID,x=>({...x,msgs:[...(x.msgs||[]),msg]}));
     const w=document.getElementById('tmw');
     if(w){w.innerHTML=rdMsgs(gc(CID).msgs||[]);w.scrollTop=w.scrollHeight;}
-    toast('Message envoyé ✓','success');
+    toast('Message envoyé au portail ✓','success');
   }catch(e){
     uc(CID,x=>({...x,msgs:[...(x.msgs||[]),msg]}));
     const w=document.getElementById('tmw');
     if(w){w.innerHTML=rdMsgs(gc(CID).msgs||[]);w.scrollTop=w.scrollHeight;}
-    toast('Envoyé (erreur sync: '+e.message+')','');
+    toast('⚠ NON transmis au portail — '+e.message,'error');
   }
 }
 
@@ -1936,6 +2414,7 @@ async function sendGM(){
   const inp=document.getElementById('conv-inp'); if(!inp||!ACVID) return;
   const text=inp.value.trim(); if(!text) return;
   const c=gc(ACVID); if(!c) return;
+  if(!c.email){ toast("Ce client n'a pas d'email — le portail ne peut pas recevoir le message.",'error'); return; }
   const msg={from:'advisor',text,time:now(),date:today()};
   inp.value='';
   try{
@@ -1947,11 +2426,11 @@ async function sendGM(){
     await putMsgsToBin(data);
     uc(ACVID,x=>({...x,msgs:[...(x.msgs||[]),msg]}));
     rdConvMsgs();
-    toast('Message envoyé ✓','success');
+    toast('Message envoyé au portail ✓','success');
   }catch(e){
     uc(ACVID,x=>({...x,msgs:[...(x.msgs||[]),msg]}));
     rdConvMsgs();
-    toast('Envoyé (hors ligne)','');
+    toast('⚠ NON transmis au portail — '+e.message,'error');
   }
 }
 
@@ -2453,6 +2932,15 @@ rdDash();
 var JBKEY = '$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
 var MSG_BIN = '69efcf8736566621a8fb341e';
 var CLIENTS_BIN = '69efcc82856a6821897cc233';
+// Appliquer les réglages JSONBin enregistrés dans Paramètres (si non vides).
+// Sans cela, modifier le "Messages Bin ID" dans les réglages n'avait aucun effet
+// et les messages partaient toujours vers l'ancien bin → invisibles côté portail.
+try {
+  var _jbSaved = JSON.parse(localStorage.getItem('caremma_settings')||'{}');
+  if(_jbSaved.jbKey) JBKEY = _jbSaved.jbKey;
+  if(_jbSaved.jbMsg) MSG_BIN = _jbSaved.jbMsg;
+  if(_jbSaved.jbCli) CLIENTS_BIN = _jbSaved.jbCli;
+} catch(_e){}
 let _syncTimer = null;
 
 async function jbGet(id) {
@@ -2625,7 +3113,7 @@ function saveJBin(){
   var gv=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   s.jbKey=gv('jb-key');s.jbMsg=gv('jb-msg');s.jbCli=gv('jb-cli');
   localStorage.setItem('caremma_settings',JSON.stringify(s));
-  toast('JSONBin enregistré — Rechargez pour appliquer','success');
+  toast('Réglages JSONBin enregistrés — rechargez la page pour les appliquer ✓','success');
 }
 function saveDocuSign(){
   var s=JSON.parse(localStorage.getItem('caremma_settings')||'{}');
