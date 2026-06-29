@@ -514,8 +514,17 @@ function doLogin(){
     }
     // Code correct → première connexion → choisir mot de passe
     CLIENT = { email:match.email, prenom:match.prenom||'', nom:match.nom||'', docs:[], msgs:[], parcoursData:{} };
-    var saved = localStorage.getItem('caremma_c_'+eKey(email));
-    if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
+    var _ck='caremma_code_'+eKey(email), _prev=localStorage.getItem(_ck);
+    if(_prev===match.code){
+      // Même invitation : on restaure la progression déjà enregistrée
+      var saved = localStorage.getItem('caremma_c_'+eKey(email));
+      if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
+    } else {
+      // Nouvelle invitation (code différent / nouveau client) → on repart totalement à zéro
+      localStorage.removeItem('caremma_c_'+eKey(email));
+      localStorage.removeItem('caremma_auth_'+eKey(email));
+      localStorage.setItem(_ck, match.code);
+    }
     if(btn) btn.textContent = 'Accéder à mon espace →';
     // Afficher l'écran de choix de mot de passe
     document.getElementById('login-screen').style.display='none';
