@@ -1519,7 +1519,7 @@ function renderPublications(){
 /* ===== Design PDF identique au CRM ===== */
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function getInputVal(inp){ if(!inp) return '\u2014'; if(inp.type==='checkbox') return inp.checked ? '\u2713 Oui' : null; if(inp.type==='radio'){ if(!inp.checked) return null; var lbl=inp.closest('label'); return lbl?lbl.textContent.trim():inp.value; } return inp.value||'\u2014'; }
-function getQuestionLabel(opt, container, name){ var fg=opt.closest&&opt.closest('.form-group,.fg'); if(fg){ var labs=fg.querySelectorAll('label'); for(var j=0;j<labs.length;j++){ if(!labs[j].closest('.radio-opt')&&!labs[j].closest('.check-opt')){ var tx=(labs[j].textContent||'').trim(); if(tx) return tx.replace(/\s+/g,' ').slice(0,70); } } } var el=opt.parentElement; for(var i=0;i<5;i++){ if(!el) break; var pp=el.querySelector('p, .q-sub, [class*="question"]'); if(pp&&pp.textContent.trim()&&!pp.classList.contains('radio-opt')){ return pp.textContent.trim().replace(/\s+/g,' ').slice(0,70); } el=el.parentElement; } return name||'Question'; }
+function getQuestionLabel(opt, container, name){ function clean(t){ return (t||'').replace(/\s+/g,' ').replace(/\s*:\s*$/,'').trim().slice(0,80); } var box=opt.parentElement; var prev=box?box.previousElementSibling:null; if(prev && prev.tagName==='LABEL'){ var t=clean(prev.textContent); if(t) return t; } var fg=opt.closest&&opt.closest('.form-group,.fg'); if(fg){ var l=fg.querySelector('label'); if(l && !l.closest('.radio-opt') && !l.closest('.check-opt')){ var t2=clean(l.textContent); if(t2) return t2; } } return ''; }
 function buildPdfCss(){
   return '*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:Georgia,serif;color:#1a1a2e;font-size:9.5pt;background:#fff;line-height:1.4;padding:30px}'
@@ -1590,21 +1590,64 @@ async function _buildDocPDF(w, sigImg, label){
   var blob=(w==='obj')?_PHTML_B64:_CONNAISSANCE_B64;
   try{ var dec=decodeURIComponent(Array.from(atob(blob)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join('')); tmp.innerHTML=dec; }catch(e){ return null; }
   document.body.appendChild(tmp); _pcRestore(tmp);
-  var skip=(w==='obj')?function(t){ return /^\s*8\./.test(t)||/Profil de risque\s*&\s*Validation/i.test(t); }:null;
-  var sections=_pcExtractSections(tmp, skip);
-  try{document.body.removeChild(tmp);}catch(_){ }
+  var root=tmp; if(w==='obj'){ var ps2=tmp.querySelector('#ps2'); if(ps2) root=ps2; }
   var title=(w==='obj')?'Questionnaire Objectifs de Placement':'Connaissance & Comp\u00e9tence AMF';
-  var sigBlock='<div class="sec"><div class="sec-title">Signature du client</div>'
-    +'<div class="grid-1"><div class="row"><div class="lbl">Sign\u00e9 \u00e9lectroniquement par</div><div class="val">'+escHtml(clientName)+' \u00b7 le '+escHtml(label)+'</div></div></div>'
-    +'<div style="margin-top:8px;padding:8px;border:1px solid #e0e0e0;display:inline-block;background:#fff"><img src="'+sigImg+'" style="height:58px"></div></div>';
-  var H=buildPdfHtml(title, clientName, today, sections, sigBlock);
+  var fraisRe=/frais|honoraires|courtage|d\u00e9positaire|administratif|gestion financi|montant total/i;
+  function fillField(inp){ if(!inp) return '<span class="field">&nbsp;</span>'; var v=getInputVal(inp); if(v&&v!=='\u2014'&&v!==null) return '<b>'+escHtml(v)+'</b>'; return '<span class="field">&nbsp;</span>'; }
+  var body=buildPdfHeader(title, today, clientName)+'<div class="body">';
+  root.querySelectorAll('.q-title,.card-title,.section-header h2,h2').forEach(function(titleEl){
+    var heading=(titleEl.textContent||'').trim(); if(!heading||heading.length<2) return;
+    var container=titleEl.parentElement; if(!container) return;
+    var rows=[], fulls=[];
+    container.querySelectorAll('.form-group,.fg').forEach(function(fg){
+      var lbl=fg.querySelector('label,.fl'); if(!lbl) return; var label2=(lbl.textContent||'').trim();
+      if(w==='obj'&&fraisRe.test(label2)) return;
+      var inp=fg.querySelector('input:not([type=radio]):not([type=checkbox]),select,textarea'); if(!inp) return;
+      var valHtml=fillField(inp);
+      if(label2.length>30||inp.tagName==='TEXTAREA') fulls.push({label:label2,value:valHtml}); else rows.push({label:label2,value:valHtml});
+    });
+    var cbDone={};
+    container.querySelectorAll('.check-opt').forEach(function(opt){ var inp=opt.querySelector('input[type=checkbox]'); if(!inp) return; var fg=inp.closest('.form-group,.fg'); var key=fg||container; if(cbDone[key.__k=(key.__k||Math.random())]) {} });
+    var groups={};
+    container.querySelectorAll('.radio-opt').forEach(function(opt){ var inp=opt.querySelector('input[type=radio]'); if(!inp) return; var nm=inp.name||'grp'; if(!groups[nm]) groups[nm]={q:'',opts:[]}; groups[nm].opts.push({txt:(opt.textContent||'').trim().replace(/\s+/g,' '), on:inp.checked}); if(!groups[nm].q) groups[nm].q=getQuestionLabel(opt,container,nm); });
+    Object.keys(groups).forEach(function(nm){ var g=groups[nm]; var oh=g.opts.map(function(o){ return '<span class="'+(o.on?'rdo-on':'rdo-box')+'"></span>'+(o.on?'<b>':'')+escHtml(o.txt)+(o.on?'</b>':'')+'&nbsp;&nbsp;&nbsp;'; }).join(''); fulls.push({label:(g.q&&g.q!=='Question'?g.q:''), value:oh}); });
+    container.querySelectorAll('table').forEach(function(table){
+      var headers=Array.from(table.querySelectorAll('thead th')).map(function(th){return (th.textContent||'').trim();}); if(!headers.length) return;
+      var t='<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:9pt"><tr>';
+      headers.forEach(function(h,hi){ t+='<th style="background:#0f1e35;color:#c9a84c;padding:5px 8px;font-size:8pt;text-align:'+(hi===0?'left':'center')+'">'+escHtml(h)+'</th>'; });
+      t+='</tr>';
+      table.querySelectorAll('tbody tr').forEach(function(tr,ri){ var cells=tr.querySelectorAll('td'); if(!cells.length) return; t+='<tr style="background:'+(ri%2?'#fafafa':'#fff')+'">'; Array.from(cells).forEach(function(td,ci){ if(ci===0){ t+='<td style="padding:5px 8px;border-bottom:1px solid #eee">'+escHtml((td.textContent||'').trim())+'</td>'; } else { var inp=td.querySelector('input'); var on=inp&&inp.checked; t+='<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center"><span class="'+(on?'chk-on':'chk-box')+'"></span></td>'; } }); t+='</tr>'; });
+      t+='</table>'; fulls.push({value:t, tableOnly:true});
+    });
+    if(!rows.length&&!fulls.length) return;
+    body+='<div class="sec"><div class="sec-title">'+escHtml(heading)+'</div>';
+    if(rows.length){ body+='<div class="grid">'; rows.forEach(function(r){ body+='<div class="row"><div class="lbl">'+escHtml(r.label)+'</div><div class="val">'+r.value+'</div></div>'; }); body+='</div>'; }
+    fulls.forEach(function(r){ if(r.tableOnly){ body+='<div style="margin-top:6px">'+r.value+'</div>'; } else if(r.label){ body+='<div class="grid-1" style="margin-top:4px"><div class="row"><div class="lbl">'+escHtml(r.label)+'</div><div class="val">'+r.value+'</div></div></div>'; } else { body+='<div style="padding:6px 8px;font-size:9pt">'+r.value+'</div>'; } });
+    body+='</div>';
+  });
+  try{document.body.removeChild(tmp);}catch(_){ }
+  var ville=''; try{ var pd=CLIENT.parcoursData||{}; ville=pd['qo-ville']||pd['qo-adresse-ville']||''; }catch(_){ } if(!ville) ville='Maisons-Laffitte';
+  body+='<div class="sec" style="margin-top:12px"><div class="sec-title">Signature du client</div>'
+    +'<div style="padding:12px 8px;font-size:9.5pt">'
+    +'<p>Fait \u00e0 <b>'+escHtml(ville)+'</b>, le <b>'+escHtml(label)+'</b></p>'
+    +'<p style="margin-top:6px">Sign\u00e9 \u00e9lectroniquement par <b>'+escHtml(clientName)+'</b> \u2014 mention \u00ab Lu et approuv\u00e9 \u00bb</p>'
+    +'<div style="margin-top:8px;padding:6px;border:1px solid #888;display:inline-block;background:#fff"><img src="'+sigImg+'" style="height:54px"></div>'
+    +'</div></div>';
+  body+='</div>';
+  var css=buildPdfCss()
+    +'.field{border:none;border-bottom:1px solid #aaa;min-width:140px;display:inline-block;padding:1px 3px;font-family:Georgia,serif}'
+    +'.rdo-box{width:12px;height:12px;border-radius:50%;border:1.5px solid #888;display:inline-block;margin-right:4px;vertical-align:middle}'
+    +'.rdo-on{width:12px;height:12px;border-radius:50%;border:1.5px solid #0f1e35;background:#0f1e35;display:inline-block;margin-right:4px;vertical-align:middle}'
+    +'.chk-box{width:12px;height:12px;border:1.5px solid #888;display:inline-block;vertical-align:middle}'
+    +'.chk-on{width:12px;height:12px;border:1.5px solid #0f1e35;background:#0f1e35;display:inline-block;vertical-align:middle}';
+  var H='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escHtml(title)+'</title><style>'+css+'</style></head><body>'+body+buildPdfFooter(today)+'</body></html>';
   var ifr=document.createElement('iframe'); ifr.style.cssText='position:fixed;left:-99999px;top:0;width:794px;height:1400px;border:0;background:#fff;';
   document.body.appendChild(ifr);
   var idoc=ifr.contentDocument||ifr.contentWindow.document; idoc.open(); idoc.write(H); idoc.close();
   await new Promise(function(r){ setTimeout(r,200); });
   var doc=new jsPDFc({unit:'mm',format:'a4'}); var pw=210, ph=297;
   try{
-    var canvas=await html2canvas(idoc.body,{scale:1.4,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
+    var canvas=await html2canvas(idoc.body,{scale:1.3,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
     var pageHpx=Math.floor(canvas.width*(ph/pw));
     var contentH=canvas.height;
     try{ var cc2=canvas.getContext('2d'); var W=canvas.width; for(var yy=canvas.height-1; yy>=0; yy-=4){ var dd=cc2.getImageData(0,yy,W,1).data; var nw=false; for(var xx=0;xx<dd.length;xx+=32){ if(dd[xx]<245||dd[xx+1]<245||dd[xx+2]<245){nw=true;break;} } if(nw){ contentH=Math.min(canvas.height, yy+12); break; } } }catch(e){}
@@ -1613,7 +1656,7 @@ async function _buildDocPDF(w, sigImg, label){
       var sh=Math.min(pageHpx, contentH-pos);
       if(!first && sh < 24){ break; }
       var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=sh; var cx=pc.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,pc.width,pc.height); cx.drawImage(canvas,0,pos,canvas.width,sh,0,0,canvas.width,sh);
-      var img=pc.toDataURL('image/jpeg',0.72); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
+      var img=pc.toDataURL('image/jpeg',0.68); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
     }
   }catch(e){ try{document.body.removeChild(ifr);}catch(_){ } return null; }
   try{document.body.removeChild(ifr);}catch(_){ }
