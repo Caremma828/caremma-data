@@ -234,10 +234,14 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
       <div class="login-desc">Accédez à votre espace pour consulter votre dossier, vos documents et contacter votre conseiller.</div>
       <label class="login-lbl">Adresse email</label>
       <input class="login-inp" id="li-email" type="email" placeholder="votre@email.fr" autocomplete="email">
-      <label class="login-lbl">Code d'accès (6 chiffres)</label>
-      <input class="login-inp" id="li-code" type="password" placeholder="••••••" maxlength="6" inputmode="numeric">
-      <button class="login-btn" onclick="doLogin()">Accéder à mon espace →</button>
+      <div id="li-step2" style="display:none">
+        <label class="login-lbl" id="li-pass-lbl">Mot de passe <a id="li-edit" href="javascript:void(0)" onclick="loginEditEmail()" style="display:none;float:right;font-weight:400;font-size:11px;color:var(--gold2);text-decoration:none;opacity:.8">← modifier l'email</a></label>
+        <input class="login-inp" id="li-pass" type="password" placeholder="Votre mot de passe" autocomplete="current-password">
+      </div>
+      <button class="login-btn" id="li-continue-btn" onclick="loginContinue()">Continuer →</button>
+      <button class="login-btn" id="li-go-btn" style="display:none" onclick="doLogin()">Se connecter →</button>
       <div class="login-err" id="li-err">Email ou code incorrect.</div>
+      <div id="li-hint" style="display:none;margin-top:.6rem;font-size:11px;color:rgba(255,255,255,.45);text-align:center;line-height:1.6"></div>
       <div style="margin-top:1.4rem;padding-top:1.1rem;border-top:1px solid rgba(201,168,76,.12);font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.8">
         Accès réservé aux clients Caremma Finance.<br>
         <a href="mailto:marc.reverseau@caremmafinance.com" style="color:var(--gold2);text-decoration:none;opacity:.8">Contactez votre conseiller</a> pour obtenir vos accès.
@@ -475,98 +479,100 @@ function showUploadProgress(zoneId, pct, msg){
 // JSONBIN
 // ═══════════════════════════════════════════════════════
 
-function doLogin(){
-  var email = (document.getElementById('li-email').value||'').trim().toLowerCase();
-  var code  = (document.getElementById('li-code').value||'').trim();
-  var errEl = document.getElementById('li-err');
-  var btn   = document.querySelector('.login-btn');
-  errEl.style.display='none';
-  if(btn) btn.textContent = 'Vérification...';
-
-  // 1. Vérifier d'abord dans localStorage (mot de passe déjà défini)
-  var localKey = 'caremma_auth_'+eKey(email);
-  var localAuth = localStorage.getItem(localKey);
-  if(localAuth){
-    try{
-      var auth = JSON.parse(localAuth);
-      if(auth.password === code){
-        // Connexion avec mot de passe
-        CLIENT = Object.assign({email:email,prenom:auth.prenom||'',nom:auth.nom||'',docs:[],msgs:[],parcoursData:{}}, auth.clientData||{});
-        var saved = localStorage.getItem('caremma_c_'+eKey(email));
-        if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
-        sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT));
-        if(btn) btn.textContent = 'Accéder à mon espace →';
-        startApp(); return;
-      }
-    }catch(e){}
-  }
-
-  // 2. Vérifier le code d'accès dans JSONBin
-  jbGet(CLIENTS_BIN).then(function(data){
-    var clients = data.clients||[];
-    var match = clients.find(function(c){ return c.email.toLowerCase()===email && c.code===code; });
-    if(!match){
-      // Essayer aussi KNOWN_CLIENTS (fallback)
-      match = (typeof KNOWN_CLIENTS!=='undefined'?KNOWN_CLIENTS:[]).find(function(c){ return c.email.toLowerCase()===email && c.code===code; });
-    }
-    if(!match){
-      errEl.style.display='block';
-      if(btn) btn.textContent = 'Accéder à mon espace →';
-      return;
-    }
-    // Code correct → première connexion → choisir mot de passe
-    CLIENT = { email:match.email, prenom:match.prenom||'', nom:match.nom||'', docs:[], msgs:[], parcoursData:{} };
-    var _ck='caremma_code_'+eKey(email), _prev=localStorage.getItem(_ck);
-    if(_prev===match.code){
-      // Même invitation : on restaure la progression déjà enregistrée
-      var saved = localStorage.getItem('caremma_c_'+eKey(email));
-      if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
-    } else {
-      // Nouvelle invitation (code différent / nouveau client) → on repart totalement à zéro
-      localStorage.removeItem('caremma_c_'+eKey(email));
-      localStorage.removeItem('caremma_auth_'+eKey(email));
-      localStorage.setItem(_ck, match.code);
-    }
-    if(btn) btn.textContent = 'Accéder à mon espace →';
-    // Afficher l'écran de choix de mot de passe
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('set-pwd-screen').style.display='flex';
-  }).catch(function(){
-    // Fallback localStorage si JSONBin inaccessible
-    var localKey2 = 'caremma_auth_'+eKey(email);
-    var stored = localStorage.getItem(localKey2);
-    if(stored){
-      try{
-        var a=JSON.parse(stored);
-        if(a.code===code){
-          CLIENT={email:email,prenom:a.prenom||'',nom:a.nom||'',docs:[],msgs:[],parcoursData:{}};
-          document.getElementById('login-screen').style.display='none';
-          document.getElementById('set-pwd-screen').style.display='flex';
-        } else { errEl.style.display='block'; }
-      }catch(e){ errEl.style.display='block'; }
-    } else { errEl.style.display='block'; }
-    if(btn) btn.textContent = 'Accéder à mon espace →';
+function _pwHash(s){ s=String(s||''); var h=5381, t=s+'caremmaCF#salt7'; for(var i=0;i<t.length;i++){ h=((h<<5)+h+t.charCodeAt(i))>>>0; } return 'h'+h.toString(16); }
+var _liState={email:'',client:null,hasPwd:false,code:'',pwd:''};
+function loginContinue(){
+  var email=(document.getElementById('li-email').value||'').trim().toLowerCase();
+  var errEl=document.getElementById('li-err'); errEl.style.display='none';
+  if(!/.+@.+\..+/.test(email)){ errEl.textContent='Adresse email invalide.'; errEl.style.display='block'; return; }
+  _liState.email=email;
+  var btn=document.getElementById('li-continue-btn'); btn.textContent='Vérification...';
+  var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
+  if(localAuth){ _liState.hasPwd=true; btn.textContent='Continuer →'; _loginShowStep('pwd'); return; }
+  Promise.all([jbGet(CLIENTS_BIN).catch(function(){return{};}), jbGet(MSG_BIN).catch(function(){return{};})]).then(function(arr){
+    btn.textContent='Continuer →';
+    var clients=(arr[0]&&arr[0].clients)||[];
+    var client=clients.find(function(c){ return (c.email||'').toLowerCase()===email; });
+    if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){ return (c.email||'').toLowerCase()===email; }); }
+    if(!client){ errEl.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; errEl.style.display='block'; return; }
+    _liState.client=client; _liState.code=''+client.code;
+    var en=(arr[1]&&arr[1].messages&&arr[1].messages[eKey(email)])||{};
+    _liState.hasPwd=!!en.pwd; _liState.pwd=en.pwd||'';
+    _loginShowStep(_liState.hasPwd?'pwd':'code');
   });
 }
-
+function _loginShowStep(kind){
+  document.getElementById('li-step2').style.display='block';
+  document.getElementById('li-continue-btn').style.display='none';
+  document.getElementById('li-go-btn').style.display='block';
+  var em=document.getElementById('li-email'); em.setAttribute('readonly','readonly'); em.style.opacity='.7';
+  var edit=document.getElementById('li-edit'); if(edit) edit.style.display='inline';
+  var lbl=document.getElementById('li-pass-lbl'), inp=document.getElementById('li-pass'), hint=document.getElementById('li-hint'), go=document.getElementById('li-go-btn');
+  if(kind==='code'){ lbl.textContent='Code d\'accès (reçu par email)'; inp.placeholder='••••••'; inp.value=''; go.textContent='Valider le code →'; hint.style.display='block'; hint.textContent='Première connexion : saisissez le code reçu par email, vous choisirez ensuite votre mot de passe.'; }
+  else { lbl.textContent='Mot de passe'; inp.placeholder='Votre mot de passe'; inp.value=''; go.textContent='Se connecter →'; hint.style.display='none'; }
+  setTimeout(function(){ try{inp.focus();}catch(e){} },60);
+}
+function loginEditEmail(){
+  document.getElementById('li-step2').style.display='none';
+  document.getElementById('li-go-btn').style.display='none';
+  document.getElementById('li-continue-btn').style.display='block';
+  var em=document.getElementById('li-email'); em.removeAttribute('readonly'); em.style.opacity='1';
+  var edit=document.getElementById('li-edit'); if(edit) edit.style.display='none';
+  document.getElementById('li-err').style.display='none';
+  var h=document.getElementById('li-hint'); if(h) h.style.display='none';
+}
+function doLogin(){
+  var email=_liState.email||(document.getElementById('li-email').value||'').trim().toLowerCase();
+  var pass=(document.getElementById('li-pass').value||'').trim();
+  var errEl=document.getElementById('li-err'); errEl.style.display='none';
+  if(!pass){ errEl.textContent='Saisissez votre '+(_liState.hasPwd?'mot de passe':'code d\'accès')+'.'; errEl.style.display='block'; return; }
+  if(_liState.hasPwd){
+    var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
+    if(localAuth){ try{ var auth=JSON.parse(localAuth); if((auth.pwdHash&&auth.pwdHash===_pwHash(pass))||(auth.password&&auth.password===pass)){ _doLoginSuccess(email, auth); return; } }catch(e){} }
+    if(_liState.pwd && _pwHash(pass)===_liState.pwd){ _doLoginSuccess(email, null); return; }
+    errEl.textContent='Mot de passe incorrect.'; errEl.style.display='block'; return;
+  }
+  // première connexion → valider le code
+  if(_liState.code && (''+_liState.code)===(''+pass)){
+    CLIENT={ email:email, prenom:(_liState.client&&_liState.client.prenom)||'', nom:(_liState.client&&_liState.client.nom)||'', docs:[],msgs:[],parcoursData:{} };
+    var _ck='caremma_code_'+eKey(email), _prev=localStorage.getItem(_ck);
+    if(_prev!==(''+_liState.code)){ localStorage.removeItem('caremma_c_'+eKey(email)); localStorage.removeItem('caremma_auth_'+eKey(email)); localStorage.setItem(_ck, ''+_liState.code); }
+    else { var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} } }
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('set-pwd-screen').style.display='flex';
+    return;
+  }
+  errEl.textContent='Code d\'accès incorrect. Vérifiez l\'email reçu de Caremma Finance.'; errEl.style.display='block';
+}
+function _doLoginSuccess(email, auth){
+  CLIENT=Object.assign({email:email,prenom:'',nom:'',docs:[],msgs:[],parcoursData:{}}, (auth&&auth.clientData)||{});
+  if(auth){ CLIENT.prenom=auth.prenom||CLIENT.prenom; CLIENT.nom=auth.nom||CLIENT.nom; }
+  if(_liState.client){ CLIENT.prenom=CLIENT.prenom||_liState.client.prenom||''; CLIENT.nom=CLIENT.nom||_liState.client.nom||''; }
+  var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
+  sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT));
+  startApp();
+}
 function setPassword(){
-  var pwd1 = document.getElementById('sp-pwd1').value;
-  var pwd2 = document.getElementById('sp-pwd2').value;
-  var errEl = document.getElementById('sp-err');
+  var pwd1=document.getElementById('sp-pwd1').value, pwd2=document.getElementById('sp-pwd2').value;
+  var errEl=document.getElementById('sp-err');
   if(!pwd1||pwd1.length<6){ errEl.textContent='Minimum 6 caractères.'; errEl.style.display='block'; return; }
   if(pwd1!==pwd2){ errEl.textContent='Les mots de passe ne correspondent pas.'; errEl.style.display='block'; return; }
   errEl.style.display='none';
-  // Sauvegarder le mot de passe localement
-  var localKey = 'caremma_auth_'+eKey(CLIENT.email);
-  localStorage.setItem(localKey, JSON.stringify({
-    password:pwd1, prenom:CLIENT.prenom, nom:CLIENT.nom,
-    clientData:CLIENT
-  }));
+  var hash=_pwHash(pwd1);
+  try{ localStorage.setItem('caremma_auth_'+eKey(CLIENT.email), JSON.stringify({ pwdHash:hash, prenom:CLIENT.prenom, nom:CLIENT.nom, clientData:CLIENT })); }catch(e){}
+  jbGet(MSG_BIN).then(function(data){
+    if(!data.messages) data.messages={}; var k=eKey(CLIENT.email);
+    if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
+    data.messages[k].pwd=hash; data.messages[k].email=CLIENT.email;
+    return jbPut(MSG_BIN,data);
+  }).catch(function(){});
   sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT));
   document.getElementById('set-pwd-screen').style.display='none';
-  toast('Mot de passe créé ✓ Bienvenue '+CLIENT.prenom+' !','success');
+  toast('Mot de passe créé ✓ Bienvenue '+(CLIENT.prenom||'')+' !','success');
   startApp();
 }
+
+
 
 function doLogout(){
   CLIENT = null;
@@ -1519,7 +1525,7 @@ function renderPublications(){
 /* ===== Design PDF identique au CRM ===== */
 function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function getInputVal(inp){ if(!inp) return '\u2014'; if(inp.type==='checkbox') return inp.checked ? '\u2713 Oui' : null; if(inp.type==='radio'){ if(!inp.checked) return null; var lbl=inp.closest('label'); return lbl?lbl.textContent.trim():inp.value; } return inp.value||'\u2014'; }
-function getQuestionLabel(opt, container, name){ var fg=opt.closest&&opt.closest('.form-group,.fg'); if(fg){ var labs=fg.querySelectorAll('label'); for(var j=0;j<labs.length;j++){ if(!labs[j].closest('.radio-opt')&&!labs[j].closest('.check-opt')){ var tx=(labs[j].textContent||'').trim(); if(tx) return tx.replace(/\s+/g,' ').slice(0,70); } } } var el=opt.parentElement; for(var i=0;i<5;i++){ if(!el) break; var pp=el.querySelector('p, .q-sub, [class*="question"]'); if(pp&&pp.textContent.trim()&&!pp.classList.contains('radio-opt')){ return pp.textContent.trim().replace(/\s+/g,' ').slice(0,70); } el=el.parentElement; } return name||'Question'; }
+function getQuestionLabel(opt, container, name){ function clean(t){ return (t||'').replace(/\s+/g,' ').replace(/\s*:\s*$/,'').trim().slice(0,80); } var box=opt.parentElement; var prev=box?box.previousElementSibling:null; if(prev && prev.tagName==='LABEL'){ var t=clean(prev.textContent); if(t) return t; } var fg=opt.closest&&opt.closest('.form-group,.fg'); if(fg){ var l=fg.querySelector('label'); if(l && !l.closest('.radio-opt') && !l.closest('.check-opt')){ var t2=clean(l.textContent); if(t2) return t2; } } return ''; }
 function buildPdfCss(){
   return '*{box-sizing:border-box;margin:0;padding:0}'
     +'body{font-family:Georgia,serif;color:#1a1a2e;font-size:9.5pt;background:#fff;line-height:1.4;padding:30px}'
@@ -1590,21 +1596,64 @@ async function _buildDocPDF(w, sigImg, label){
   var blob=(w==='obj')?_PHTML_B64:_CONNAISSANCE_B64;
   try{ var dec=decodeURIComponent(Array.from(atob(blob)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join('')); tmp.innerHTML=dec; }catch(e){ return null; }
   document.body.appendChild(tmp); _pcRestore(tmp);
-  var skip=(w==='obj')?function(t){ return /^\s*8\./.test(t)||/Profil de risque\s*&\s*Validation/i.test(t); }:null;
-  var sections=_pcExtractSections(tmp, skip);
-  try{document.body.removeChild(tmp);}catch(_){ }
+  var root=tmp; if(w==='obj'){ var ps2=tmp.querySelector('#ps2'); if(ps2) root=ps2; }
   var title=(w==='obj')?'Questionnaire Objectifs de Placement':'Connaissance & Comp\u00e9tence AMF';
-  var sigBlock='<div class="sec"><div class="sec-title">Signature du client</div>'
-    +'<div class="grid-1"><div class="row"><div class="lbl">Sign\u00e9 \u00e9lectroniquement par</div><div class="val">'+escHtml(clientName)+' \u00b7 le '+escHtml(label)+'</div></div></div>'
-    +'<div style="margin-top:8px;padding:8px;border:1px solid #e0e0e0;display:inline-block;background:#fff"><img src="'+sigImg+'" style="height:58px"></div></div>';
-  var H=buildPdfHtml(title, clientName, today, sections, sigBlock);
+  var fraisRe=/frais|honoraires|courtage|d\u00e9positaire|administratif|gestion financi|montant total/i;
+  function fillField(inp){ if(!inp) return '<span class="field">&nbsp;</span>'; var v=getInputVal(inp); if(v&&v!=='\u2014'&&v!==null) return '<b>'+escHtml(v)+'</b>'; return '<span class="field">&nbsp;</span>'; }
+  var body=buildPdfHeader(title, today, clientName)+'<div class="body">';
+  root.querySelectorAll('.q-title,.card-title,.section-header h2,h2').forEach(function(titleEl){
+    var heading=(titleEl.textContent||'').trim(); if(!heading||heading.length<2) return;
+    var container=titleEl.parentElement; if(!container) return;
+    var rows=[], fulls=[];
+    container.querySelectorAll('.form-group,.fg').forEach(function(fg){
+      var lbl=fg.querySelector('label,.fl'); if(!lbl) return; var label2=(lbl.textContent||'').trim();
+      if(w==='obj'&&fraisRe.test(label2)) return;
+      var inp=fg.querySelector('input:not([type=radio]):not([type=checkbox]),select,textarea'); if(!inp) return;
+      var valHtml=fillField(inp);
+      if(label2.length>30||inp.tagName==='TEXTAREA') fulls.push({label:label2,value:valHtml}); else rows.push({label:label2,value:valHtml});
+    });
+    var cbDone={};
+    container.querySelectorAll('.check-opt').forEach(function(opt){ var inp=opt.querySelector('input[type=checkbox]'); if(!inp) return; var fg=inp.closest('.form-group,.fg'); var key=fg||container; if(cbDone[key.__k=(key.__k||Math.random())]) {} });
+    var groups={};
+    container.querySelectorAll('.radio-opt').forEach(function(opt){ var inp=opt.querySelector('input[type=radio]'); if(!inp) return; var nm=inp.name||'grp'; if(!groups[nm]) groups[nm]={q:'',opts:[]}; groups[nm].opts.push({txt:(opt.textContent||'').trim().replace(/\s+/g,' '), on:inp.checked}); if(!groups[nm].q) groups[nm].q=getQuestionLabel(opt,container,nm); });
+    Object.keys(groups).forEach(function(nm){ var g=groups[nm]; var oh=g.opts.map(function(o){ return '<span class="'+(o.on?'rdo-on':'rdo-box')+'"></span>'+(o.on?'<b>':'')+escHtml(o.txt)+(o.on?'</b>':'')+'&nbsp;&nbsp;&nbsp;'; }).join(''); fulls.push({label:(g.q&&g.q!=='Question'?g.q:''), value:oh}); });
+    container.querySelectorAll('table').forEach(function(table){
+      var headers=Array.from(table.querySelectorAll('thead th')).map(function(th){return (th.textContent||'').trim();}); if(!headers.length) return;
+      var t='<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:9pt"><tr>';
+      headers.forEach(function(h,hi){ t+='<th style="background:#0f1e35;color:#c9a84c;padding:5px 8px;font-size:8pt;text-align:'+(hi===0?'left':'center')+'">'+escHtml(h)+'</th>'; });
+      t+='</tr>';
+      table.querySelectorAll('tbody tr').forEach(function(tr,ri){ var cells=tr.querySelectorAll('td'); if(!cells.length) return; t+='<tr style="background:'+(ri%2?'#fafafa':'#fff')+'">'; Array.from(cells).forEach(function(td,ci){ if(ci===0){ t+='<td style="padding:5px 8px;border-bottom:1px solid #eee">'+escHtml((td.textContent||'').trim())+'</td>'; } else { var inp=td.querySelector('input'); var on=inp&&inp.checked; t+='<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center"><span class="'+(on?'chk-on':'chk-box')+'"></span></td>'; } }); t+='</tr>'; });
+      t+='</table>'; fulls.push({value:t, tableOnly:true});
+    });
+    if(!rows.length&&!fulls.length) return;
+    body+='<div class="sec"><div class="sec-title">'+escHtml(heading)+'</div>';
+    if(rows.length){ body+='<div class="grid">'; rows.forEach(function(r){ body+='<div class="row"><div class="lbl">'+escHtml(r.label)+'</div><div class="val">'+r.value+'</div></div>'; }); body+='</div>'; }
+    fulls.forEach(function(r){ if(r.tableOnly){ body+='<div style="margin-top:6px">'+r.value+'</div>'; } else if(r.label){ body+='<div class="grid-1" style="margin-top:4px"><div class="row"><div class="lbl">'+escHtml(r.label)+'</div><div class="val">'+r.value+'</div></div></div>'; } else { body+='<div style="padding:6px 8px;font-size:9pt">'+r.value+'</div>'; } });
+    body+='</div>';
+  });
+  try{document.body.removeChild(tmp);}catch(_){ }
+  var ville=''; try{ var pd=CLIENT.parcoursData||{}; ville=pd['qo-ville']||pd['qo-adresse-ville']||''; }catch(_){ } if(!ville) ville='Maisons-Laffitte';
+  body+='<div class="sec" style="margin-top:12px"><div class="sec-title">Signature du client</div>'
+    +'<div style="padding:12px 8px;font-size:9.5pt">'
+    +'<p>Fait \u00e0 <b>'+escHtml(ville)+'</b>, le <b>'+escHtml(label)+'</b></p>'
+    +'<p style="margin-top:6px">Sign\u00e9 \u00e9lectroniquement par <b>'+escHtml(clientName)+'</b> \u2014 mention \u00ab Lu et approuv\u00e9 \u00bb</p>'
+    +'<div style="margin-top:8px;padding:6px;border:1px solid #888;display:inline-block;background:#fff"><img src="'+sigImg+'" style="height:54px"></div>'
+    +'</div></div>';
+  body+='</div>';
+  var css=buildPdfCss()
+    +'.field{border:none;border-bottom:1px solid #aaa;min-width:140px;display:inline-block;padding:1px 3px;font-family:Georgia,serif}'
+    +'.rdo-box{width:12px;height:12px;border-radius:50%;border:1.5px solid #888;display:inline-block;margin-right:4px;vertical-align:middle}'
+    +'.rdo-on{width:12px;height:12px;border-radius:50%;border:1.5px solid #0f1e35;background:#0f1e35;display:inline-block;margin-right:4px;vertical-align:middle}'
+    +'.chk-box{width:12px;height:12px;border:1.5px solid #888;display:inline-block;vertical-align:middle}'
+    +'.chk-on{width:12px;height:12px;border:1.5px solid #0f1e35;background:#0f1e35;display:inline-block;vertical-align:middle}';
+  var H='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+escHtml(title)+'</title><style>'+css+'</style></head><body>'+body+buildPdfFooter(today)+'</body></html>';
   var ifr=document.createElement('iframe'); ifr.style.cssText='position:fixed;left:-99999px;top:0;width:794px;height:1400px;border:0;background:#fff;';
   document.body.appendChild(ifr);
   var idoc=ifr.contentDocument||ifr.contentWindow.document; idoc.open(); idoc.write(H); idoc.close();
   await new Promise(function(r){ setTimeout(r,200); });
   var doc=new jsPDFc({unit:'mm',format:'a4'}); var pw=210, ph=297;
   try{
-    var canvas=await html2canvas(idoc.body,{scale:1.4,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
+    var canvas=await html2canvas(idoc.body,{scale:1.3,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
     var pageHpx=Math.floor(canvas.width*(ph/pw));
     var contentH=canvas.height;
     try{ var cc2=canvas.getContext('2d'); var W=canvas.width; for(var yy=canvas.height-1; yy>=0; yy-=4){ var dd=cc2.getImageData(0,yy,W,1).data; var nw=false; for(var xx=0;xx<dd.length;xx+=32){ if(dd[xx]<245||dd[xx+1]<245||dd[xx+2]<245){nw=true;break;} } if(nw){ contentH=Math.min(canvas.height, yy+12); break; } } }catch(e){}
@@ -1613,7 +1662,7 @@ async function _buildDocPDF(w, sigImg, label){
       var sh=Math.min(pageHpx, contentH-pos);
       if(!first && sh < 24){ break; }
       var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=sh; var cx=pc.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,pc.width,pc.height); cx.drawImage(canvas,0,pos,canvas.width,sh,0,0,canvas.width,sh);
-      var img=pc.toDataURL('image/jpeg',0.72); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
+      var img=pc.toDataURL('image/jpeg',0.68); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
     }
   }catch(e){ try{document.body.removeChild(ifr);}catch(_){ } return null; }
   try{document.body.removeChild(ifr);}catch(_){ }
