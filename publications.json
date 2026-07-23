@@ -1,6 +1,15 @@
 {
-  "updated": "2026-07-23T08:17:10.662Z",
+  "updated": "2026-07-23T08:31:17.442Z",
   "items": [
+    {
+      "id": "pub_1784795477437",
+      "ts": 1784795477437,
+      "titre": "nOTE",
+      "date": "23/07/2026",
+      "contenu": "",
+      "url": "https://caremma828.github.io/caremma-data/publications/1784795470808_note.pdf",
+      "type": "publication"
+    },
     {
       "id": "pub_1784794630657",
       "ts": 1784794630657,
