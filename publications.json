@@ -1,6 +1,15 @@
 {
-  "updated": "2026-07-23T08:31:17.442Z",
+  "updated": "2026-07-27T17:17:26.757Z",
   "items": [
+    {
+      "id": "pub_1785172646755",
+      "ts": 1785172646755,
+      "titre": "Newsletter",
+      "date": "27/07/2026",
+      "contenu": "",
+      "url": "https://caremma828.github.io/caremma-data/publications/1785172640794_newsletter.pdf",
+      "type": "publication"
+    },
     {
       "id": "pub_1784795477437",
       "ts": 1784795477437,
