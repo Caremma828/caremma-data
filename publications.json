@@ -1,4 +1,14 @@
 {
-  "updated": "2026-07-28T14:02:29.700Z",
-  "items": []
+  "updated": "2026-07-28T14:13:36.078Z",
+  "items": [
+    {
+      "id": "pub_1785248016078",
+      "ts": 1785248016078,
+      "titre": "note de fin de trimestre- T2 2026",
+      "date": "Juin 2026",
+      "contenu": "Chère madame, cher monsieur, vous trouverez ci joint notre note trimestrielle récapitulant le deuxième trimestre 2026 ainsi que la stratégie mise en place.",
+      "url": "https://caremma828.github.io/caremma-data/publications/1785248012534_note-de-fin-de-trimestre-t2-2026.pdf",
+      "type": "publication"
+    }
+  ]
 }
