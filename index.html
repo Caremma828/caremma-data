@@ -1202,7 +1202,7 @@ function renderKPIs(){
   if(e('k-progress-sub'))e('k-progress-sub').textContent='vers '+fmt(mv.next);
   // Actions
   var actions=[];
-  var docs=(CLIENT.docs||[]).filter(function(d){return d.status!=='signed';});
+  var docs=(CLIENT.docs||[]).filter(function(d){return d.status==='pending';});
   if(docs.length)actions.push('✍️ '+docs.length+' document(s) à signer');
   var vus=CLIENT.rapportsVus||[];
   var newRap=(CLIENT.rapports||[]).filter(function(r){return vus.indexOf(String(r.id))<0;}).length;
@@ -1301,7 +1301,7 @@ function renderStories(){
     var pctD=h[h.length-2].valeur?Math.round(delta/h[h.length-2].valeur*1000)/10:0;
     cards.push({ico:pctD>=0?'📈':'📉',label:'Performance',title:(pctD>=0?'+':'')+pctD+'% dernière période',page:'reporting'});
   }
-  var docs=(CLIENT.docs||[]).filter(function(d){return d.status!=='signed';});
+  var docs=(CLIENT.docs||[]).filter(function(d){return d.status==='pending';});
   if(docs.length)cards.push({ico:'✍️',label:'À signer',title:docs.length+' document(s)',page:'documents'});
 
   if(!cards.length){el.innerHTML='';return;}
@@ -1421,30 +1421,26 @@ function syncMessages(){
 // ═══ DOCUMENTS ═══
 function renderDocs(){
   var el=document.getElementById('docs-list');if(!el)return;
-  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status!=='signed'; });
+  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status==='pending'; });
   if(!docs.length){
     el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">'
       +'<div style="font-size:36px;margin-bottom:12px">📂</div>'
       +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document en attente</div>'
-      +'<div style="font-size:12px;line-height:1.6">Votre conseiller vous enverra des documents à signer depuis le CRM. Vos documents déjà signés se trouvent dans « Mes documents ».</div>'
+      +'<div style="font-size:12px;line-height:1.6">Votre conseiller vous enverra ici les documents à signer. Les documents simples qu\'il vous transmet, ainsi que vos documents déjà signés, se trouvent dans « Mes documents ».</div>'
       +'</div>';
     return;
   }
-  var statusLabel={pending:'⏳ En attente de signature',signed:'✅ Signé','':'📄 Document'};
-  var statusColor={pending:'var(--orange)',signed:'var(--green)','':'var(--text2)'};
   el.innerHTML=docs.map(function(d){
-    var signed=d.status==='signed';
     return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
-      +'border:1.5px solid '+(d.status==='pending'?'var(--gold)':signed?'rgba(34,197,94,.3)':'var(--bdr-gold)')+';'
-      +'border-radius:10px;margin-bottom:10px">'
-      +'<div style="font-size:26px;flex-shrink:0">'+(signed?'✅':d.status==='pending'?'📋':'📄')+'</div>'
+      +'border:1.5px solid var(--gold);border-radius:10px;margin-bottom:10px">'
+      +'<div style="font-size:26px;flex-shrink:0">📋</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
         +'<div style="font-size:11px;color:var(--text3)">'+escH(d.date||'')+(d.cat?' · '+escH(d.cat):'')+'</div>'
       +'</div>'
       +'<div style="flex-shrink:0;text-align:right">'
-        +'<div style="font-size:11px;font-weight:600;color:'+(statusColor[d.status]||statusColor[''])+';margin-bottom:6px">'+(statusLabel[d.status]||'')+'</div>'
-        +(d.status==='pending'?'<button onclick="openDocSig(\''+escH(d.id)+'\')" class="btn btn-gold btn-sm" style="font-size:11px;padding:5px 12px">✍️ Signer</button>':'')
+        +'<div style="font-size:11px;font-weight:600;color:var(--orange);margin-bottom:6px">⏳ En attente de signature</div>'
+        +'<button onclick="openDocSig(\''+escH(d.id)+'\')" class="btn btn-gold btn-sm" style="font-size:11px;padding:5px 12px">✍️ Signer</button>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -1452,26 +1448,86 @@ function renderDocs(){
 
 function renderMesDocuments(){
   var el=document.getElementById('mesdocs-list'); if(!el) return;
-  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status==='signed'; });
-  if(!docs.length){
+  var simples=(CLIENT.docs||[]).filter(function(d){ return d.status==='ok'; });
+  var signes=(CLIENT.docs||[]).filter(function(d){ return d.status==='signed'; });
+  if(!simples.length && !signes.length){
     el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">'
       +'<div style="font-size:36px;margin-bottom:12px">🗂️</div>'
-      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document signé pour le moment</div>'
-      +'<div style="font-size:12px;line-height:1.6">Une fois vos documents signés depuis « Documents à signer », ils apparaîtront ici.</div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document pour le moment</div>'
+      +'<div style="font-size:12px;line-height:1.6">Les documents transmis par votre conseiller, ainsi que vos documents signés depuis « Documents à signer », apparaîtront ici.</div>'
       +'</div>';
     return;
   }
-  el.innerHTML=docs.map(function(d){
-    return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
-      +'border:1.5px solid rgba(34,197,94,.3);border-radius:10px;margin-bottom:10px">'
-      +'<div style="font-size:26px;flex-shrink:0">✅</div>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
-        +'<div style="font-size:11px;color:var(--text3)">Signé le '+escH(d.signatureDate||d.date||'')+'</div>'
-      +'</div>'
-      +'<button onclick="clientDownloadSignedPdf(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-btn-'+escH(d.id)+'">⬇ Télécharger le PDF</button>'
-      +'</div>';
-  }).join('');
+  var html='';
+  if(simples.length){
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:4px 0 10px">Documents transmis par votre conseiller</div>';
+    html+=simples.map(function(d){
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
+        +'border:1.5px solid var(--bdr-gold);border-radius:10px;margin-bottom:10px">'
+        +'<div style="font-size:26px;flex-shrink:0">📄</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+escH(d.date||'')+(d.cat?' · '+escH(d.cat):'')+'</div>'
+        +'</div>'
+        +'<button onclick="clientDownloadAdminDoc(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-adm-'+escH(d.id)+'">⬇ Télécharger</button>'
+        +'</div>';
+    }).join('');
+  }
+  if(signes.length){
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:'+(simples.length?'22px':'4px')+' 0 10px">Documents signés</div>';
+    html+=signes.map(function(d){
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
+        +'border:1.5px solid rgba(34,197,94,.3);border-radius:10px;margin-bottom:10px">'
+        +'<div style="font-size:26px;flex-shrink:0">✅</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">Signé le '+escH(d.signatureDate||d.date||'')+'</div>'
+        +'</div>'
+        +'<button onclick="clientDownloadSignedPdf(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-btn-'+escH(d.id)+'">⬇ Télécharger le PDF</button>'
+        +'</div>';
+    }).join('');
+  }
+  el.innerHTML=html;
+}
+
+// Téléchargement d'un document "simple" transmis par le conseiller (pas de signature requise)
+async function clientDownloadAdminDoc(docId){
+  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
+  if(!doc){toast('Document introuvable','error');return;}
+  var btn=document.getElementById('dl-adm-'+docId);
+  if(doc.data){
+    var a0=document.createElement('a'); a0.href=doc.data; a0.download=doc.name||doc.nom||'document';
+    document.body.appendChild(a0); a0.click(); a0.remove();
+    toast('Document téléchargé ✓','success');
+    return;
+  }
+  var chunks=doc.dataChunks;
+  if(!chunks || !chunks.length){ toast('Document non disponible pour le moment — réessayez.','error'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Récupération…'; }
+  try{
+    var parts=[];
+    for(var i=0;i<chunks.length;i++){
+      var j=null;
+      for(var att=0; att<6; att++){
+        try{ j=await jbGet(chunks[i]); break; }
+        catch(e){ await new Promise(function(r){ setTimeout(r, 700*(att+1)); }); }
+      }
+      if(!j){ toast('Limite JSONBin atteinte — patientez ~30 s puis réessayez.','error'); if(btn){btn.disabled=false;btn.textContent='⬇ Télécharger';} return; }
+      parts.push({i:(j&&j.i!=null?j.i:i), c:(j&&j.c)||''});
+      if(btn) btn.textContent='Récupération ('+(i+1)+'/'+chunks.length+')…';
+    }
+    parts.sort(function(a,b){return a.i-b.i;});
+    var b64=parts.map(function(p){return p.c;}).join('');
+    if(!b64){ toast('Fichier vide ou expiré','error'); if(btn){btn.disabled=false;btn.textContent='⬇ Télécharger';} return; }
+    var bin=atob(b64); var n=bin.length; var u8=new Uint8Array(n); while(n--){u8[n]=bin.charCodeAt(n);}
+    var blob=new Blob([u8],{type:doc.dataMime||'application/pdf'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=doc.name||doc.nom||'document';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(_){} }, 8000);
+    toast('Document téléchargé ✓','success');
+  }catch(e){ toast('Erreur : '+e.message,'error'); }
+  if(btn){ btn.disabled=false; btn.textContent='⬇ Télécharger'; }
 }
 
 // Reconstitue le PDF signé à partir des morceaux stockés dans JSONBin (même mécanisme que côté CRM)
@@ -3773,7 +3829,7 @@ async function sendEmailJS(serviceId, templateId, params){
 
       <!-- DOCUMENTS -->
       <div class="page" id="pg-documents">
-        <div class="ph"><div class="pt">Documents à signer</div><div class="ps">Déposez, consultez et signez vos documents contractuels</div></div>
+        <div class="ph"><div class="pt">Documents à signer</div><div class="ps">Déposez et signez les documents contractuels en attente</div></div>
         <div class="card">
           <div class="card-title">Déposer un document</div>
           <div class="upload-zone" id="upload-zone"
@@ -3835,7 +3891,7 @@ async function sendEmailJS(serviceId, templateId, params){
 
       <!-- MES DOCUMENTS (signés) -->
       <div class="page" id="pg-mesdocuments">
-        <div class="ph"><div class="pt">Mes documents</div><div class="ps">Retrouvez ici tous vos documents déjà signés</div></div>
+        <div class="ph"><div class="pt">Mes documents</div><div class="ps">Documents transmis par votre conseiller et documents déjà signés</div></div>
         <div id="mesdocs-list"></div>
       </div>
 
