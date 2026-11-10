@@ -209,6 +209,17 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 /* ═══ Donut allocation d'actifs ═══ */
 .donut-wrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+details.acc{border-top:1px solid var(--bdr)}
+details.acc:first-of-type{border-top:0}
+details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 2px;user-select:none}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary::after{content:'';margin-left:auto;flex:0 0 auto;width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+details.acc[open]>summary::after{transform:rotate(-135deg);margin-top:3px}
+details.acc .acc-t{font-size:11.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold)}
+details.acc .acc-s{font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+details.acc>summary:hover .acc-t{color:var(--gold2)}
+details.acc .acc-b{padding:4px 2px 18px}
+
 .donut-svg{flex:0 0 auto}
 .donut-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:180px}
 .donut-legend-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);cursor:default;transition:opacity 0.15s}
@@ -3272,13 +3283,23 @@ function renderAllocationDonut(){
       +'Allocation d\'actifs non renseignée pour le moment.<br>Votre conseiller la mettra à jour depuis le CRM.</div>';
     return;
   }
-  var h=_donutHtml(alloc,140);
-  var sub=function(titre,items){
-    if(!items||!items.length)return '';
-    return '<div style="flex:1;min-width:240px"><div style="font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">'+titre+'</div>'+_donutHtml(items,96)+'</div>';
+  /* Rubriques déroulantes : l'état ouvert/fermé est conservé d'un affichage à l'autre */
+  var was={};
+  Array.prototype.forEach.call(el.querySelectorAll('details.acc'),function(d){was[d.getAttribute('data-k')]=d.open;});
+  var isOpen=function(k,def){return (k in was)?was[k]:def;};
+  var pctTxt=function(items,n){
+    var t=items.reduce(function(s,a){return s+(a.valeur||0);},0)||1;
+    return items.slice(0,n||3).map(function(a){return escH(a.label)+' '+(Math.round((a.valeur||0)/t*1000)/10).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';}).join(' · ');
   };
-  var extra=sub('Par devise',P.allocationDevise)+sub('Par zone géographique',P.allocationZone);
-  if(extra) h+='<div style="display:flex;gap:28px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid var(--bdr)">'+extra+'</div>';
+  var acc=function(k,titre,sous,body,def){
+    return '<details class="acc" data-k="'+k+'"'+(isOpen(k,def)?' open':'')+'><summary><span class="acc-t">'+titre+'</span><span class="acc-s">'+sous+'</span></summary><div class="acc-b">'+body+'</div></details>';
+  };
+  var P_total=alloc.reduce(function(s,a){return s+(a.valeur||0);},0);
+  var h=acc('alloc','Allocation d\'actifs',pctTxt(alloc,3),_donutHtml(alloc,140),true);
+  if(P.allocationDevise&&P.allocationDevise.length) h+=acc('dev','Allocation par devise',pctTxt(P.allocationDevise,3),_donutHtml(P.allocationDevise,120),false);
+  if(P.allocationZone&&P.allocationZone.length) h+=acc('zone','Allocation par zone géographique',pctTxt(P.allocationZone,2),_donutHtml(P.allocationZone,120),false);
+  var npos=(P.positions||[]).length;
+  if(npos) h+=acc('det','Détail du portefeuille',npos+' lignes · '+(+P_total||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}),'<div id="positions-detail"></div>',false);
   var rel=P.releve;
   if(rel&&rel.date){
     h+='<div style="margin-top:14px;font-size:11px;color:var(--text3)">Situation au '+escH(String(rel.date).split('-').reverse().join('/'))
@@ -3292,7 +3313,7 @@ function renderPositionsDetail(){
   var el=document.getElementById('positions-detail');if(!el)return;
   var P=CLIENT.patrimoine||{};
   var pos=P.positions||[];
-  var card=el.closest?el.closest('.card'):null;
+  var card=null;
   if(!pos.length){ if(card)card.style.display='none'; el.innerHTML=''; return; }
   if(card)card.style.display='';
   var eur=function(n){return (+n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});};
@@ -4063,13 +4084,8 @@ async function sendEmailJS(serviceId, templateId, params){
         <div id="rep-detail"></div>
 
         <div class="card" style="margin-top:16px">
-          <div class="card-title">Allocation d'actifs</div>
+          <div class="card-title">Votre portefeuille</div>
           <div id="allocation-donut"></div>
-        </div>
-
-        <div class="card" style="margin-top:16px;display:none">
-          <div class="card-title">Détail de votre portefeuille</div>
-          <div id="positions-detail"></div>
         </div>
 
         <div class="card" style="margin-top:16px">
