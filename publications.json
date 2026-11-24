@@ -1,6 +1,15 @@
 {
-  "updated": "2026-11-24T16:50:20.797Z",
+  "updated": "2026-11-24T16:50:32.347Z",
   "items": [
+    {
+      "id": "pub_1795539032344",
+      "ts": 1795539032344,
+      "titre": "Note d'éclairage semis conducteurs",
+      "date": "24/11/2026",
+      "contenu": "",
+      "url": "https://caremma828.github.io/caremma-data/publications/1795539000367_note-d-eclairage-semis-conducteurs.pdf",
+      "type": "publication"
+    },
     {
       "id": "pub_1791543214399",
       "ts": 1791543214399,
