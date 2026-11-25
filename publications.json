@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-24T16:51:09.031Z",
+  "updated": "2026-11-25T16:19:05.285Z",
   "items": [
     {
       "id": "pub_1795539032344",
@@ -17,7 +17,17 @@
       "date": "Septembre 2026",
       "contenu": "",
       "url": "https://caremma828.github.io/caremma-data/publications/1791543207338_note-de-fin-de-trimestre-t3-2026.pdf",
-      "type": "publication"
+      "type": "publication",
+      "clients": [
+        "stephaniereverseau@hotmail.com",
+        "reverseaumarc@gmail.com",
+        "charles-beatrice@hotmail.fr",
+        "nicolasbourdillat@yahoo.fr",
+        "rivallain.pascal@gmail.com",
+        "jpierre.vau@gmail.com",
+        "julien.fri@hotmail.fr",
+        "fbourdillat@hotmail.com"
+      ]
     },
     {
       "id": "pub_1785248016078",
